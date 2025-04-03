@@ -1,7 +1,7 @@
 [package]
 name = "horror-game"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Horror-Game"
 repository = "https://github.com/eliasstepanik/horror-game"
 license = "MIT OR Apache-2.0"
