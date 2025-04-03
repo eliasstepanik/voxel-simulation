@@ -3,8 +3,12 @@ use crate::helper::egui_dock::{
     reset_camera_viewport, set_camera_viewport, set_gizmo_mode, show_ui_system, UiState,
 };
 use bevy::prelude::*;
+use crate::helper::*;
 use bevy_egui::EguiSet;
 use bevy_render::extract_resource::ExtractResourcePlugin;
+use spacetimedb_sdk::{credentials, DbContext, Error, Event, Identity, Status, Table, TableWithPrimaryKey};
+use crate::helper::database::setup_database;
+use crate::module_bindings::DbConnection;
 
 pub struct AppPlugin;
 
@@ -23,8 +27,9 @@ impl Plugin for AppPlugin {
 
         app.add_plugins(crate::plugins::camera::camera_plugin::CameraPlugin);
         app.add_plugins(crate::plugins::ui::ui_plugin::UiPlugin);
-
         app.add_plugins(crate::plugins::environment::environment_plugin::EnvironmentPlugin);
+        app.add_systems(Startup, setup_database);
+
 
         app.add_systems(Update, (debug_gizmos, toggle_ui_system));
         app.add_systems(

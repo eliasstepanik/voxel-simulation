@@ -1,10 +1,18 @@
-use bevy::color::palettes::basic::*;
-use bevy::color::palettes::css::{BEIGE, MIDNIGHT_BLUE, ORANGE, ORANGE_RED, SEA_GREEN};
-use bevy::math::*;
-use bevy::pbr::{CascadeShadowConfigBuilder, NotShadowCaster};
+
 use bevy::prelude::*;
+use crate::helper::database::DbConnectionResource;
 
-pub fn setup(mut commands: Commands) {
 
-    // Insert the octree into the ECS
+
+
+
+pub fn init(mut commands: Commands, db_connection: Res<DbConnectionResource>) {
+}
+
+pub fn fixed_update(time: Res<Time>, db_connection: Res<DbConnectionResource>) {
+
+}
+
+pub fn update(time: Res<Time>, db_connection: Res<DbConnectionResource>)  {
+
 }

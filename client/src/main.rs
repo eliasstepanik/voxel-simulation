@@ -1,6 +1,8 @@
 mod app;
 mod helper;
 mod plugins;
+mod module_bindings;
+
 use crate::app::AppPlugin;
 use bevy::gizmos::{AppGizmoBuilder, GizmoPlugin};
 use bevy::log::info;

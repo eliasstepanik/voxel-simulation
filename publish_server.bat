@@ -2,4 +2,6 @@
 @echo off
 REM Script to publish the horror-game project using spacetime
 
-spacetime publish -c --project-path server horror-game
+spacetime publish -c --project-path server horror-game -y
+rm client\src\module_bindings\*
+spacetime generate --lang rust --out-dir client/src/module_bindings --project-path server
