@@ -29,3 +29,4 @@ fn validate_name(name: String) -> Result<String, String> {
         Ok(name)
     }
 }
+

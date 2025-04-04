@@ -45,3 +45,12 @@ pub fn identity_disconnected(ctx: &ReducerContext) {
         log::warn!("Disconnect event for unknown Player with identity {:?}", ctx.sender);
     }
 }
+
+#[spacetimedb::reducer(init)]
+pub fn init(ctx: &ReducerContext) -> Result<(), String> {
+    log::info!("Initializing...");
+    ctx.db.config().try_insert(Config {
+        id: 0,
+    })?;
+    Ok(())
+}

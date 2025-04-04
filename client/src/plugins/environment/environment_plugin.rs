@@ -7,7 +7,6 @@ pub struct EnvironmentPlugin;
 impl Plugin for EnvironmentPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, init);
-        app.add_systems(FixedUpdate, fixed_update);
-        app.add_systems(Update, fixed_update);
+        app.add_systems(Update, sync_entities_system);
     }
 }

@@ -1,5 +1,5 @@
-
-use bevy::prelude::{Commands, Resource};
+use bevy::ecs::system::SystemState;
+use bevy::prelude::{Commands, Resource, World};
 use bevy::utils::info;
 use spacetimedb_sdk::{credentials, DbContext, Error, Event, Identity, Status, Table, TableWithPrimaryKey};
 use crate::module_bindings::*;
@@ -23,6 +23,8 @@ pub fn setup_database(mut commands: Commands) {
     subscribe_to_tables(&ctx);
     ctx.run_threaded();
     commands.insert_resource(DbConnectionResource(ctx));
+    
+
 }
 
 
@@ -57,5 +59,5 @@ fn subscribe_to_tables(ctx: &DbConnection) {
     ctx.subscription_builder()
         .on_applied(on_sub_applied)
         .on_error(on_sub_error)
-        .subscribe(["SELECT * FROM player"]);
+        .subscribe(["SELECT * FROM player", "SELECT * FROM entity"]);
 }

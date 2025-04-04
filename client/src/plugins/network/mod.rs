@@ -1,2 +1,2 @@
 pub(crate) mod systems;
-mod network_plugin;
+pub mod network_plugin;

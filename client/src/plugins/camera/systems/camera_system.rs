@@ -4,8 +4,9 @@ use bevy::math::Vec3;
 use bevy::prelude::*;
 use bevy_render::camera::{Exposure, PhysicalCameraParameters, Projection};
 use bevy_window::CursorGrabMode;
+use rand::Rng;
 use random_word::Lang;
-use crate::module_bindings::set_name;
+use crate::module_bindings::{set_name, spawn_entity, DbVector3};
 use crate::plugins::network::systems::database::DbConnectionResource;
 
 #[derive(Component)]
@@ -45,6 +46,15 @@ pub fn setup(mut commands: Commands) {
             sensor_height: 0.01866,
         }),
     ));
+}
+
+fn random_vec3(min: f32, max: f32) -> Vec3 {
+    let mut rng = rand::thread_rng();
+    Vec3::new(
+        rng.gen_range(min..max),
+        rng.gen_range(min..max),
+        rng.gen_range(min..max),
+    )
 }
 
 /// Example system to control a camera using double-precision for position.
@@ -98,8 +108,16 @@ pub fn camera_controller_system(
 
     let word = random_word::get(Lang::En);
 
-    if keyboard_input.just_pressed(KeyCode::KeyQ) {
+    if keyboard_input.just_pressed(KeyCode::Numpad1) {
         ctx.0.reducers.set_name(word.to_string()).unwrap();
+    }
+    if keyboard_input.just_pressed(KeyCode::Numpad2) {
+        let rand_position = random_vec3(-10.0,10.0);
+        ctx.0.reducers.spawn_entity(DbVector3{
+            x: rand_position.x,
+            y: rand_position.y,
+            z: rand_position.z,
+        }).unwrap();
     }
 
     // ====================

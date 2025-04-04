@@ -28,7 +28,7 @@ impl Plugin for AppPlugin {
         app.add_plugins(crate::plugins::camera::camera_plugin::CameraPlugin);
         app.add_plugins(crate::plugins::ui::ui_plugin::UiPlugin);
         app.add_plugins(crate::plugins::environment::environment_plugin::EnvironmentPlugin);
-        app.add_systems(Startup, setup_database);
+        app.add_plugins(crate::plugins::network::network_plugin::NetworkPlugin);
 
 
         app.add_systems(Update, (debug_gizmos, toggle_ui_system));

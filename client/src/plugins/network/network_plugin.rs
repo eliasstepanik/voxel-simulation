@@ -8,6 +8,6 @@ use crate::plugins::network::systems::database::setup_database;
 pub struct NetworkPlugin;
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_database);
+        app.add_systems(PreStartup, setup_database);
     }
 }
