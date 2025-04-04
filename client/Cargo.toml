@@ -18,3 +18,4 @@ bevy_window = "0.15.0"
 egui_dock = "0.14.0"
 spacetimedb-sdk = "1.0"
 hex = "0.4"
+random_word = { version = "0.5.0", features = ["en"] }

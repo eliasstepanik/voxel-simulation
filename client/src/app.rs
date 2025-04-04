@@ -7,7 +7,7 @@ use crate::helper::*;
 use bevy_egui::EguiSet;
 use bevy_render::extract_resource::ExtractResourcePlugin;
 use spacetimedb_sdk::{credentials, DbContext, Error, Event, Identity, Status, Table, TableWithPrimaryKey};
-use crate::helper::database::setup_database;
+use crate::plugins::network::systems::database::setup_database;
 use crate::module_bindings::DbConnection;
 
 pub struct AppPlugin;

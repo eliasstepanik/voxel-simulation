@@ -4,6 +4,9 @@ use bevy::math::Vec3;
 use bevy::prelude::*;
 use bevy_render::camera::{Exposure, PhysicalCameraParameters, Projection};
 use bevy_window::CursorGrabMode;
+use random_word::Lang;
+use crate::module_bindings::set_name;
+use crate::plugins::network::systems::database::DbConnectionResource;
 
 #[derive(Component)]
 pub struct CameraController {
@@ -54,6 +57,7 @@ pub fn camera_controller_system(
     mut windows: Query<&mut Window>,
     mut query: Query<(&mut Transform, &mut CameraController)>,
     mut app_exit_events: EventWriter<AppExit>,
+    mut ctx: ResMut<DbConnectionResource>,
 ) {
     let mut window = windows.single_mut();
     let (mut transform, mut controller) = query.single_mut();
@@ -90,6 +94,12 @@ pub fn camera_controller_system(
         if controller.speed < 0.01 {
             controller.speed = 0.01;
         }
+    }
+
+    let word = random_word::get(Lang::En);
+
+    if keyboard_input.just_pressed(KeyCode::KeyQ) {
+        ctx.0.reducers.set_name(word.to_string()).unwrap();
     }
 
     // ====================
@@ -146,6 +156,8 @@ pub fn camera_controller_system(
             window.cursor_options.grab_mode = CursorGrabMode::None;
         }
     }
+
+
 
     // =======================
     // 7) Exit on Escape
