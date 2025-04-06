@@ -4,10 +4,13 @@ use bevy::color::palettes::css::RED;
 use bevy::prelude::*;
 use crate::plugins::environment::systems::environment_system::*;
 use crate::plugins::network::systems::database::setup_database;
+use crate::plugins::network::systems::entities::*;
 
 pub struct NetworkPlugin;
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PreStartup, setup_database);
+        /*app.add_systems(Startup, init);
+        app.add_systems(Update, sync_entities_system);*/
     }
 }

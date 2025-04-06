@@ -6,7 +6,7 @@ use bevy_render::camera::{Exposure, PhysicalCameraParameters, Projection};
 use bevy_window::CursorGrabMode;
 use rand::Rng;
 use random_word::Lang;
-use crate::module_bindings::{set_name, spawn_entity, DbVector3};
+use crate::module_bindings::{set_name, set_position, spawn_entity, DbVector3};
 use crate::plugins::network::systems::database::DbConnectionResource;
 
 #[derive(Component)]
@@ -28,7 +28,10 @@ impl Default for CameraController {
     }
 }
 
-pub fn setup(mut commands: Commands) {
+pub fn setup(mut commands: Commands,
+             db_resource: Res<DbConnectionResource>,) {
+    
+
     commands.spawn((
         Transform::from_xyz(0.0, 0.0, 10.0), // initial f32
         GlobalTransform::default(),
@@ -45,6 +48,7 @@ pub fn setup(mut commands: Commands) {
             sensitivity_iso: 100.0,
             sensor_height: 0.01866,
         }),
+
     ));
 }
 
@@ -158,6 +162,13 @@ pub fn camera_controller_system(
     let delta_seconds = time.delta_secs_f64();
     let distance = controller.speed as f64 * delta_seconds;
     transform.translation += direction * distance as f32;
+
+    ctx.0.reducers.set_position(DbVector3{
+        x: transform.translation.x,
+        y: transform.translation.y,
+        z: transform.translation.z,
+    }).expect("TODO: panic message");
+    
 
     // =========================
     // 4) Lock/Unlock Mouse (L)

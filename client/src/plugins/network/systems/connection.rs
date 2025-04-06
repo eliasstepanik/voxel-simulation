@@ -11,6 +11,7 @@ pub fn on_connected(_ctx: &DbConnection, _identity: Identity, token: &str) {
     if let Err(e) = creds_store().save(token) {
         eprintln!("Failed to save credentials: {:?}", e);
     }
+    
 }
 
 /// Our `on_connect_error` callback: print the error, then exit the process.

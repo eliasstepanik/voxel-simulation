@@ -1,7 +1,9 @@
 mod types;
 
-use spacetimedb::{reducer, ReducerContext, SpacetimeType, Table};
-use crate::types::player::{player, Player};
+use spacetimedb::{reducer, ReducerContext, Table};
+use crate::types::entity::{entity, entity__TableHandle, Entity, EntityType};
+use crate::types::player::{player, player__TableHandle, Player};
+use crate::types::vec3::DbVector3;
 
 #[spacetimedb::table(name = config, public)]
 pub struct Config {
@@ -26,10 +28,21 @@ pub fn client_connected(ctx: &ReducerContext) {
     } else {
         // If this is a new player, create a `player` row for the `Identity`,
         // which is online, but hasn't set a name.
+        let entity = ctx.db.entity().try_insert(Entity{
+            entity_id: 0,
+            position: DbVector3 {
+                x: 0.0,
+                y: 0.0,
+                z: 10.0,
+            },
+            entity_type: EntityType::Sphere,
+        }).expect("TODO: panic message");
+
         ctx.db.player().insert(Player {
             name: None,
             identity: ctx.sender,
             online: true,
+            entity_id: entity.entity_id,
         });
     }
 }
@@ -37,8 +50,20 @@ pub fn client_connected(ctx: &ReducerContext) {
 #[reducer(client_disconnected)]
 // Called when a client disconnects from SpacetimeDB
 pub fn identity_disconnected(ctx: &ReducerContext) {
-    if let Some(player) = ctx.db.player().identity().find(ctx.sender) {
-        ctx.db.player().identity().update(Player { online: false, ..player });
+
+    let entity: &entity__TableHandle = ctx.db.entity();
+    
+     
+    
+    
+    if let Some(player_iter) = ctx.db.player().identity().find(ctx.sender) {
+        
+        
+        
+        ctx.db.player().identity().update(Player { online: false, ..player_iter });
+        ctx.db.entity().iter().find(|e| e.entity_id == player_iter.entity_id).iter().for_each(|e| {
+            entity.delete(e.clone());
+        })
     } else {
         // This branch should be unreachable,
         // as it doesn't make sense for a client to disconnect without connecting first.
