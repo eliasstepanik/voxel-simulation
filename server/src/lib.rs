@@ -3,7 +3,7 @@ mod types;
 use spacetimedb::{reducer, ReducerContext, Table};
 use crate::types::entity::{entity, entity__TableHandle, Entity, EntityType};
 use crate::types::player::{player, player__TableHandle, Player};
-use crate::types::vec3::DbVector3;
+use crate::types::types::{DBVector4, DbTransform, DbVector3};
 
 #[spacetimedb::table(name = config, public)]
 pub struct Config {
@@ -30,11 +30,12 @@ pub fn client_connected(ctx: &ReducerContext) {
         // which is online, but hasn't set a name.
         let entity = ctx.db.entity().try_insert(Entity{
             entity_id: 0,
-            position: DbVector3 {
-                x: 0.0,
-                y: 0.0,
-                z: 10.0,
+            transform: DbTransform{
+                position: DbVector3{x: 0.0, y: 0.0, z: 10.0},
+                rotation: DBVector4{x: 0.0, y: 0.0, z: 0.0, w: 1.0},
+                scale: DbVector3{x: 1.0, y: 1.0, z: 1.0},
             },
+                
             entity_type: EntityType::Sphere,
         }).expect("TODO: panic message");
 

@@ -10,7 +10,7 @@ pub struct NetworkPlugin;
 impl Plugin for NetworkPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PreStartup, setup_database);
-        /*app.add_systems(Startup, init);
-        app.add_systems(Update, sync_entities_system);*/
+        app.add_systems(Startup, init);
+        app.add_systems(Update, sync_entities_system);
     }
 }

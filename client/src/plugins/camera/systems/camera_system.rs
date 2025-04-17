@@ -112,10 +112,10 @@ pub fn camera_controller_system(
 
     let word = random_word::get(Lang::En);
 
-    if keyboard_input.just_pressed(KeyCode::Numpad1) {
+    if keyboard_input.just_pressed(KeyCode::KeyQ) {
         ctx.0.reducers.set_name(word.to_string()).unwrap();
     }
-    if keyboard_input.just_pressed(KeyCode::Numpad2) {
+    if keyboard_input.just_pressed(KeyCode::KeyE) {
         let rand_position = random_vec3(-10.0,10.0);
         ctx.0.reducers.spawn_entity(DbVector3{
             x: rand_position.x,

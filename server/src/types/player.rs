@@ -1,6 +1,7 @@
+use crate::types::entity::*;
+use std::io::empty;
 use spacetimedb::{reducer, Identity, ReducerContext, Table};
-use crate::types::entity::{entity, Entity};
-use crate::types::vec3::DbVector3;
+use crate::types::types::{DbTransform, DbVector3};
 
 #[spacetimedb::table(name = player, public)]
 #[derive(Debug, Clone)]
@@ -34,7 +35,10 @@ pub fn set_position(ctx: &ReducerContext, position: DbVector3) -> Result<(), Str
     if let Some(entity) = ctx.db.entity().iter().find(|e| e.entity_id == ctx.db.player().identity().find(ctx.sender).unwrap().entity_id) {
         ctx.db.entity().entity_id()
             .update(Entity{
-            position,
+            transform: DbTransform{
+                position: position,
+                ..entity.transform
+            },
             ..entity
         });
     }

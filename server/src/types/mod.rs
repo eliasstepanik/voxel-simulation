@@ -1,3 +1,3 @@
-pub mod vec3;
+pub mod types;
 pub mod player;
 pub mod entity;

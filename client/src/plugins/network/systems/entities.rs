@@ -1,19 +1,24 @@
 use std::collections::HashSet;
 use bevy::math::Vec3;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{default, Commands, Component, Cuboid, DespawnRecursiveExt, Entity, GlobalTransform, Mesh, Query, Res, ResMut, Sphere, Transform};
+use bevy::prelude::{default, Bundle, Commands, Component, Cuboid, DespawnRecursiveExt, Entity, GlobalTransform, Mesh, Query, Res, ResMut, Sphere, Transform};
 use bevy_asset::Assets;
+use bevy_reflect::Reflect;
 use bevy_render::mesh::Mesh3d;
 use spacetimedb_sdk::Table;
-use crate::module_bindings::{DbVector3, EntityTableAccess, EntityType};
+use crate::module_bindings::{DbTransform, DbVector3, EntityTableAccess, EntityType};
 use crate::plugins::network::systems::database::DbConnectionResource;
 
 #[derive(Component)]
 pub struct EntityDto {
 
     pub entity_id: u32,
-    pub position: DbVector3,
+
+    
+    pub transform: DbTransform,
 }
+
+
 
 pub fn init(mut commands: Commands,
             ctx: Res<DbConnectionResource>,
@@ -29,13 +34,13 @@ pub fn init(mut commands: Commands,
             Mesh3d(meshes.add(Cuboid::default()),),
             MeshMaterial3d(debug_material.clone ()),
             Transform::from_xyz(
-                entity.position.x,
-                entity.position.y,
-                entity.position.z,
+                entity.transform.position.x,
+                entity.transform.position.y,
+                entity.transform.position.z,
             ),
             EntityDto{
                 entity_id: entity.entity_id,
-                position: entity.position,
+                transform: entity.transform
             }
         ));
 
@@ -70,11 +75,11 @@ pub fn sync_entities_system(
             query.iter_mut().find(|(_, _, dto)| dto.entity_id == db_entity.entity_id)
         {
             // Update fields
-            dto.position = db_entity.position.clone();
+            dto.transform.position = db_entity.transform.position.clone();
             transform.translation = Vec3::new(
-                db_entity.position.x,
-                db_entity.position.y,
-                db_entity.position.z,
+                db_entity.transform.position.x,
+                db_entity.transform.position.y,
+                db_entity.transform.position.z,
             );
 
         } else {
@@ -92,18 +97,19 @@ pub fn sync_entities_system(
             };
 
             commands.spawn((
-                EntityDto {
-                    entity_id: db_entity.entity_id,
-                    position: db_entity.position.clone(),
-                },
+                
                 Transform::from_xyz(
-                    db_entity.position.x,
-                    db_entity.position.y,
-                    db_entity.position.z,
+                    db_entity.transform.position.x,
+                    db_entity.transform.position.y,
+                    db_entity.transform.position.z,
                 ),
                 GlobalTransform::default(),
                 entity_type,
                 MeshMaterial3d(debug_material),
+                EntityDto {
+                    entity_id: db_entity.entity_id,
+                    transform: db_entity.transform.clone(),
+                },
             ));
         }
 

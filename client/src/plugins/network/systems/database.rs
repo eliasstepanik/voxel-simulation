@@ -8,10 +8,10 @@ use crate::plugins::network::systems::connection::*;
 use crate::plugins::network::systems::subscriptions::*;
 
 /// The URI of the SpacetimeDB instance hosting our chat module.
-const HOST: &str = "http://192.168.178.10:3000";
+const HOST: &str = "http://100.85.241.101:3000";
 
 /// The database name we chose when we published our module.
-const DB_NAME: &str = "horror-game-test";
+const DB_NAME: &str = "network-game";
 
 #[derive(Resource)]
 pub struct DbConnectionResource(pub(crate) DbConnection);
