@@ -24,16 +24,11 @@ pub enum EntityType {
 
 
 #[spacetimedb::reducer]
-pub fn spawn_entity(ctx: &ReducerContext, position: DbVector3) -> Result<(), String> {
+pub fn spawn_entity(ctx: &ReducerContext, transform: DbTransform) -> Result<(), String> {
 
     ctx.db.entity().try_insert(Entity {
         entity_id: 0,
-        transform: DbTransform{
-            position: position,
-            rotation: DBVector4{x: 0.0, y: 0.0, z: 0.0, w: 1.0},
-            scale: DbVector3 {x: 1.0, y: 1.0, z: 1.0 },
-            
-        },
+        transform,
         entity_type: EntityType::Cube,
     }).expect("TODO: panic message");
 

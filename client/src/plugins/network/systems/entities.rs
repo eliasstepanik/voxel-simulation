@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use bevy::math::Vec3;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{default, Bundle, Commands, Component, Cuboid, DespawnRecursiveExt, Entity, GlobalTransform, Mesh, Query, Res, ResMut, Sphere, Transform};
+use bevy::prelude::{default, Bundle, Commands, Component, Cuboid, DespawnRecursiveExt, Entity, GlobalTransform, Mesh, Quat, Query, Res, ResMut, Sphere, Transform};
 use bevy_asset::Assets;
 use bevy_reflect::Reflect;
 use bevy_render::mesh::Mesh3d;
@@ -33,11 +33,7 @@ pub fn init(mut commands: Commands,
         commands.spawn((
             Mesh3d(meshes.add(Cuboid::default()),),
             MeshMaterial3d(debug_material.clone ()),
-            Transform::from_xyz(
-                entity.transform.position.x,
-                entity.transform.position.y,
-                entity.transform.position.z,
-            ),
+            db_transfrom_to_transfrom(entity.transform.clone()),
             EntityDto{
                 entity_id: entity.entity_id,
                 transform: entity.transform
@@ -97,12 +93,7 @@ pub fn sync_entities_system(
             };
 
             commands.spawn((
-                
-                Transform::from_xyz(
-                    db_entity.transform.position.x,
-                    db_entity.transform.position.y,
-                    db_entity.transform.position.z,
-                ),
+                db_transfrom_to_transfrom(db_entity.transform.clone()),
                 GlobalTransform::default(),
                 entity_type,
                 MeshMaterial3d(debug_material),
@@ -122,4 +113,25 @@ pub fn sync_entities_system(
             commands.entity(entity).despawn_recursive();
         }
     }
+}
+
+fn db_transfrom_to_transfrom(db_transform: DbTransform) -> Transform{
+    Transform::from_xyz(
+        db_transform.position.x,
+        db_transform.position.y,
+        db_transform.position.z,
+    ).with_rotation(
+        Quat::from_xyzw(
+            db_transform.rotation.x,
+            db_transform.rotation.y,
+            db_transform.rotation.z,
+            db_transform.rotation.w
+        )
+    ).with_scale(
+        Vec3::new(
+            db_transform.scale.x,
+            db_transform.scale.y,
+            db_transform.scale.z,
+        )
+    )
 }

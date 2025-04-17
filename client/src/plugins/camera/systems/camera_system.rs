@@ -6,7 +6,7 @@ use bevy_render::camera::{Exposure, PhysicalCameraParameters, Projection};
 use bevy_window::CursorGrabMode;
 use rand::Rng;
 use random_word::Lang;
-use crate::module_bindings::{set_name, set_position, spawn_entity, DbVector3};
+use crate::module_bindings::{set_name, set_position, spawn_entity, DbTransform, DbVector3, DbVector4};
 use crate::plugins::network::systems::database::DbConnectionResource;
 
 #[derive(Component)]
@@ -117,10 +117,25 @@ pub fn camera_controller_system(
     }
     if keyboard_input.just_pressed(KeyCode::KeyE) {
         let rand_position = random_vec3(-10.0,10.0);
-        ctx.0.reducers.spawn_entity(DbVector3{
-            x: rand_position.x,
-            y: rand_position.y,
-            z: rand_position.z,
+        let rand_rotation = random_vec3(-10.0,10.0);
+        let rand_scale = random_vec3(0.1,1.0);
+        ctx.0.reducers.spawn_entity(DbTransform{
+            position: DbVector3{
+                x: rand_position.x,
+                y: rand_position.y,
+                z: rand_position.z,
+            },
+            rotation: DbVector4 {
+                x: rand_rotation.x,
+                y: rand_rotation.y,
+                z: rand_position.z,
+                w: 0.0,
+            },
+            scale: DbVector3 {
+                x: rand_scale.x,
+                y: rand_scale.x,
+                z: rand_scale.x,
+            },
         }).unwrap();
     }
 
