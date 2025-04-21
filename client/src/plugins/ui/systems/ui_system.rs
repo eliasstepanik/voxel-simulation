@@ -1,4 +1,4 @@
-use crate::plugins::camera::systems::camera_system::CameraController;
+use crate::plugins::environment::systems::camera_system::CameraController;
 use bevy::asset::AssetServer;
 use bevy::prelude::*;
 

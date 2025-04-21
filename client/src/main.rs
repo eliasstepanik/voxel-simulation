@@ -2,7 +2,9 @@ mod app;
 mod helper;
 mod plugins;
 mod module_bindings;
+mod config;
 
+use std::fs;
 use crate::app::AppPlugin;
 use bevy::gizmos::{AppGizmoBuilder, GizmoPlugin};
 use bevy::log::info;
@@ -13,6 +15,8 @@ use bevy::DefaultPlugins;
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_window::{PresentMode, Window, WindowPlugin};
+use toml;
+use crate::config::Config;
 
 const TITLE: &str = "horror-game";
 const RESOLUTION: (f32, f32) = (1920f32, 1080f32);
@@ -21,13 +25,27 @@ const DECORATIONS: bool = true;
 const TRANSPARENT: bool = true;
 const PRESENT_MODE: PresentMode = PresentMode::AutoVsync;
 
+
+
 fn main() {
+    let config_str = fs::read_to_string("Config.toml").expect("Failed to read config file");
+    let config: Config = toml::from_str(&config_str).expect("Failed to parse config");
+
+
+
+
     let mut app = App::new();
+    
+    app.insert_resource(config);
+    
     register_platform_plugins(&mut app);
 
     app.add_plugins(AppPlugin);
     app.add_plugins(EguiPlugin);
     app.add_plugins(DefaultInspectorConfigPlugin);
+    
+
+
     /*app.add_plugins(GizmoPlugin);*/
 
     app.run();

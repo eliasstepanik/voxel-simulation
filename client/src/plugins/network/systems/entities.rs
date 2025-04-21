@@ -1,11 +1,13 @@
 use std::collections::HashSet;
-use bevy::math::Vec3;
+use bevy::log::debug;
+use bevy::math::{NormedVectorSpace, Vec3};
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
-use bevy::prelude::{default, Bundle, Commands, Component, Cuboid, DespawnRecursiveExt, Entity, GlobalTransform, Mesh, Quat, Query, Res, ResMut, Sphere, Transform};
+use bevy::prelude::{default, info, Bundle, Commands, Component, Cuboid, DespawnRecursiveExt, DetectChangesMut, Entity, GlobalTransform, Mesh, PbrBundle, Quat, Query, Res, ResMut, Sphere, Transform, TransformBundle};
 use bevy_asset::Assets;
 use bevy_reflect::Reflect;
 use bevy_render::mesh::Mesh3d;
 use spacetimedb_sdk::Table;
+use crate::helper::math::RoundTo;
 use crate::module_bindings::{DbTransform, DbVector3, EntityTableAccess, EntityType};
 use crate::plugins::network::systems::database::DbConnectionResource;
 
@@ -18,32 +20,15 @@ pub struct EntityDto {
     pub transform: DbTransform,
 }
 
-
-
-pub fn init(mut commands: Commands,
-            ctx: Res<DbConnectionResource>,
-            mut meshes: ResMut<Assets<Mesh>>,
-            mut materials: ResMut<Assets<StandardMaterial>>,) {
-
-
-
-    let debug_material = materials.add(StandardMaterial { ..default() });
-
-    for entity in ctx.0.db.entity().iter() {
-        commands.spawn((
-            Mesh3d(meshes.add(Cuboid::default()),),
-            MeshMaterial3d(debug_material.clone ()),
-            db_transfrom_to_transfrom(entity.transform.clone()),
-            EntityDto{
-                entity_id: entity.entity_id,
-                transform: entity.transform
-            }
-        ));
-
+impl From<crate::module_bindings::Entity> for EntityDto {
+    fn from(e: crate::module_bindings::Entity) -> Self {
+        EntityDto {
+            entity_id: e.entity_id,
+            transform: e.transform,
+        }
     }
-
-
 }
+
 
 
 
@@ -54,7 +39,7 @@ pub fn sync_entities_system(
 
     // We need the Entity handle for potential despawning,
     // plus mutable references if we want to update Transform/EntityDto
-    mut query: Query<(Entity, &mut Transform, &mut EntityDto)>,
+    mut query: Query<(Entity, &mut Transform, &mut GlobalTransform, &mut EntityDto)>,
 
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -67,16 +52,20 @@ pub fn sync_entities_system(
     for db_entity in  db_entities.iter() {
 
         // Try to find a matching ECS entity by entity_id
-        if let Some((_, mut transform, mut dto)) =
-            query.iter_mut().find(|(_, _, dto)| dto.entity_id == db_entity.entity_id)
+        if let Some((_, mut transform, mut global, mut dto)) =
+            query.iter_mut().find(|(_, _, _, dto)| dto.entity_id == db_entity.entity_id)
         {
             // Update fields
-            dto.transform.position = db_entity.transform.position.clone();
-            transform.translation = Vec3::new(
-                db_entity.transform.position.x,
-                db_entity.transform.position.y,
-                db_entity.transform.position.z,
-            );
+
+            // build the new local Transform
+            let new_tf = Transform::from(db_entity.transform.clone());
+
+            // overwrite both components
+            *transform = new_tf;
+            *global = GlobalTransform::from(new_tf);
+
+            // keep your DTO in sync
+            dto.transform = db_entity.transform.clone();
 
         } else {
             // Not found in ECS, so spawn a new entity
@@ -92,46 +81,25 @@ pub fn sync_entities_system(
                 EntityType::Custom => todo!(),
             };
 
+            let new_tf = Transform::from(db_entity.transform.clone());
+
             commands.spawn((
-                db_transfrom_to_transfrom(db_entity.transform.clone()),
-                GlobalTransform::default(),
+                TransformBundle::from_transform(new_tf),  // inserts BOTH Transform and GlobalTransform
                 entity_type,
                 MeshMaterial3d(debug_material),
-                EntityDto {
-                    entity_id: db_entity.entity_id,
-                    transform: db_entity.transform.clone(),
-                },
+                EntityDto::from(db_entity.clone()),
             ));
+
         }
+
 
     }
 
     // --- 3) Despawn any ECS entity that doesn't exist in the DB anymore ---
-    for (entity, _, dto) in query.iter_mut() {
+    for (entity,_, _, dto) in query.iter_mut() {
         if !db_ids.contains(&dto.entity_id) {
             // This ECS entity no longer matches anything in the DB => remove it
             commands.entity(entity).despawn_recursive();
         }
     }
-}
-
-fn db_transfrom_to_transfrom(db_transform: DbTransform) -> Transform{
-    Transform::from_xyz(
-        db_transform.position.x,
-        db_transform.position.y,
-        db_transform.position.z,
-    ).with_rotation(
-        Quat::from_xyzw(
-            db_transform.rotation.x,
-            db_transform.rotation.y,
-            db_transform.rotation.z,
-            db_transform.rotation.w
-        )
-    ).with_scale(
-        Vec3::new(
-            db_transform.scale.x,
-            db_transform.scale.y,
-            db_transform.scale.z,
-        )
-    )
 }

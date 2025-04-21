@@ -1,7 +1,10 @@
+use std::fmt::Debug;
+use std::ops::Deref;
 use bevy::ecs::system::SystemState;
-use bevy::prelude::{Commands, Resource, World};
+use bevy::prelude::{Commands, DetectChanges, Mut, Res, ResMut, Resource, World};
 use bevy::utils::info;
 use spacetimedb_sdk::{credentials, DbContext, Error, Event, Identity, Status, Table, TableWithPrimaryKey};
+use crate::config::ServerConfig;
 use crate::module_bindings::*;
 use crate::plugins::network::systems::callbacks::*;
 use crate::plugins::network::systems::connection::*;
@@ -16,9 +19,9 @@ const DB_NAME: &str = "network-game";
 #[derive(Resource)]
 pub struct DbConnectionResource(pub(crate) DbConnection);
 
-pub fn setup_database(mut commands: Commands) {
+pub fn setup_database(mut commands: Commands, config: Res<crate::Config>) {
     // Call your connection function and insert the connection as a resource.
-    let ctx = connect_to_db();
+    let ctx = connect_to_db(config);
     register_callbacks(&ctx);
     subscribe_to_tables(&ctx);
     ctx.run_threaded();
@@ -30,13 +33,16 @@ pub fn setup_database(mut commands: Commands) {
 
 /// Register subscriptions for all rows of both tables
 
-fn connect_to_db() -> DbConnection {
+fn connect_to_db(config: Res<crate::Config>) -> DbConnection {
+
+    println!("It's there: {:?}", &config.server);
+
     DbConnection::builder()
         .on_connect(on_connected)
         .on_connect_error(on_connect_error)
         .on_disconnect( on_disconnected)
-        .with_module_name(DB_NAME)
-        .with_uri(HOST)
+        .with_module_name(&config.server.database)
+        .with_uri(&config.server.host)
         .build()
         .expect("Failed to connect")
 }

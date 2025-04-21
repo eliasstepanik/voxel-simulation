@@ -1,0 +1,6 @@
+[server]
+host = "http://100.85.241.101:3000"
+database = "network-game"
+
+[movement]
+mode = "fligt"

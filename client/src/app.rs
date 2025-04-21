@@ -24,12 +24,10 @@ impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(UiState::new());
         app.insert_resource(InspectorVisible(true));
-
-        app.add_plugins(crate::plugins::camera::camera_plugin::CameraPlugin);
         app.add_plugins(crate::plugins::ui::ui_plugin::UiPlugin);
         app.add_plugins(crate::plugins::environment::environment_plugin::EnvironmentPlugin);
         app.add_plugins(crate::plugins::network::network_plugin::NetworkPlugin);
-
+        app.add_plugins(crate::plugins::input::input_plugin::InputPlugin);
 
         app.add_systems(Update, (debug_gizmos, toggle_ui_system));
         app.add_systems(
