@@ -6,9 +6,9 @@ use bevy::prelude::{default, info, Bundle, Commands, Component, Cuboid, DespawnR
 use bevy_asset::Assets;
 use bevy_reflect::Reflect;
 use bevy_render::mesh::Mesh3d;
-use spacetimedb_sdk::Table;
+use spacetimedb_sdk::{DbContext, Table};
 use crate::helper::math::RoundTo;
-use crate::module_bindings::{DbTransform, DbVector3, EntityTableAccess, EntityType};
+use crate::module_bindings::{DbTransform, DbVector3, EntityTableAccess, EntityType, PlayerTableAccess};
 use crate::plugins::network::systems::database::DbConnectionResource;
 
 #[derive(Component)]
@@ -44,6 +44,10 @@ pub fn sync_entities_system(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+
+    let identity = db_resource.0.identity();
+    let player = db_resource.0.db.player().identity().find(&identity);
+    
     // --- 1) Collect DB entities and build a set of IDs ---
     let db_entities = db_resource.0.db.entity();
     let db_ids: HashSet<u32> = db_entities.iter().map(|e| e.entity_id).collect();
@@ -51,6 +55,10 @@ pub fn sync_entities_system(
     // --- 2) For each DB entity, update or spawn in ECS ---
     for db_entity in  db_entities.iter() {
 
+        if db_entity.entity_id == player.clone().unwrap().entity_id {
+            return;
+        }
+        
         // Try to find a matching ECS entity by entity_id
         if let Some((_, mut transform, mut global, mut dto)) =
             query.iter_mut().find(|(_, _, _, dto)| dto.entity_id == db_entity.entity_id)
@@ -80,6 +88,9 @@ pub fn sync_entities_system(
                 EntityType::Cube => Mesh3d(meshes.add(Cuboid::default())),
                 EntityType::Custom => todo!(),
             };
+
+
+
 
             let new_tf = Transform::from(db_entity.transform.clone());
 

@@ -1,4 +1,4 @@
-use crate::helper::egui_dock::MainCamera;
+
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::math::Vec3;
 use bevy::prelude::*;
@@ -39,7 +39,6 @@ pub fn setup(mut commands: Commands,) {
             near: 0.0001,
             ..default()
         }),
-        MainCamera,
         CameraController::default(),
         Exposure::from_physical_camera(PhysicalCameraParameters {
             aperture_f_stops: 1.0,

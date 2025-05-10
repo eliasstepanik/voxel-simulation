@@ -1,8 +1,10 @@
 mod types;
 
-use spacetimedb::{reducer, ReducerContext, Table};
+use std::time::Duration;
+use spacetimedb::{reducer, ReducerContext, ScheduleAt, Table, TimeDuration, Timestamp};
 use crate::types::entity::{entity, entity__TableHandle, Entity, EntityType};
 use crate::types::player::{player, player__TableHandle, Player};
+use crate::types::rigidbody::physics_step;
 use crate::types::types::{DBVector4, DbTransform, DbVector3};
 
 #[spacetimedb::table(name = config, public)]
@@ -78,5 +80,24 @@ pub fn init(ctx: &ReducerContext) -> Result<(), String> {
     ctx.db.config().try_insert(Config {
         id: 0,
     })?;
+
+
+    ctx.db.physics_timer().try_insert(PhysicsTimer {
+        scheduled_id: 0,
+        scheduled_at: ScheduleAt::Interval(Duration::from_millis(50).into()),
+        last_update_ts: ctx.timestamp,
+    })?;
+
     Ok(())
+}
+
+
+
+#[spacetimedb::table(name = physics_timer, scheduled(physics_step))]
+struct PhysicsTimer {
+    #[primary_key]
+    #[auto_inc]
+    scheduled_id: u64,
+    scheduled_at: ScheduleAt,
+    last_update_ts: Timestamp,
 }

@@ -13,7 +13,6 @@ use bevy::render::settings::{Backends, RenderCreation, WgpuSettings};
 use bevy::render::RenderPlugin;
 use bevy::DefaultPlugins;
 use bevy_egui::EguiPlugin;
-use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_window::{PresentMode, Window, WindowPlugin};
 use toml;
 use crate::config::Config;
@@ -42,7 +41,6 @@ fn main() {
 
     app.add_plugins(AppPlugin);
     app.add_plugins(EguiPlugin);
-    app.add_plugins(DefaultInspectorConfigPlugin);
     
 
 

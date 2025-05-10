@@ -10,11 +10,6 @@ use crate::plugins::network::systems::callbacks::*;
 use crate::plugins::network::systems::connection::*;
 use crate::plugins::network::systems::subscriptions::*;
 
-/// The URI of the SpacetimeDB instance hosting our chat module.
-const HOST: &str = "http://100.85.241.101:3000";
-
-/// The database name we chose when we published our module.
-const DB_NAME: &str = "network-game";
 
 #[derive(Resource)]
 pub struct DbConnectionResource(pub(crate) DbConnection);
@@ -65,5 +60,5 @@ fn subscribe_to_tables(ctx: &DbConnection) {
     ctx.subscription_builder()
         .on_applied(on_sub_applied)
         .on_error(on_sub_error)
-        .subscribe(["SELECT * FROM player", "SELECT * FROM entity"]);
+        .subscribe(["SELECT * FROM player", "SELECT * FROM entity", "SELECT * FROM rigidbody"]);
 }

@@ -5,7 +5,8 @@ use bevy::math::{Quat, Vec3};
 use bevy::prelude::{EventReader, EventWriter, KeyCode, Query, Res, ResMut, Time, Transform};
 use bevy_window::{CursorGrabMode, Window};
 use random_word::Lang;
-use crate::module_bindings::{set_name, set_position, spawn_entity, DbTransform, DbVector3, DbVector4};
+use spacetimedb_sdk::DbContext;
+use crate::module_bindings::{set_name, set_position, spawn_entity, DbTransform, DbVector3, DbVector4, PlayerTableAccess};
 use crate::plugins::environment::systems::camera_system::CameraController;
 use crate::plugins::network::systems::database::DbConnectionResource;
 
@@ -19,8 +20,9 @@ pub fn flight_systems(
     mut windows: Query<&mut Window>,
     mut query: Query<(&mut Transform, &mut CameraController)>,
     mut app_exit_events: EventWriter<AppExit>,
-    mut ctx: ResMut<DbConnectionResource>,
+    //mut ctx: ResMut<DbConnectionResource>,
 ) {
+    
     let mut window = windows.single_mut();
     let (mut transform, mut controller) = query.single_mut();
 
@@ -98,12 +100,13 @@ pub fn flight_systems(
     let distance = controller.speed as f64 * delta_seconds;
     transform.translation += direction * distance as f32;
 
-    ctx.0.reducers.set_position(DbVector3{
+    /*ctx.0.reducers.set_position(DbVector3{
         x: transform.translation.x,
         y: transform.translation.y,
         z: transform.translation.z,
     }).expect("TODO: panic message");
+*/
 
 
-    
+
 }

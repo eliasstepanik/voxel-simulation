@@ -5,7 +5,9 @@ impl Plugin for EnvironmentPlugin {
 
         app.add_systems(
             Startup,
-            (crate::plugins::environment::systems::camera_system::setup),
+            (crate::plugins::environment::systems::environment_system::setup, crate::plugins::environment::systems::camera_system::setup ),
         );
+        
+        
     }
 }
