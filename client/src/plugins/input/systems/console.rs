@@ -1,12 +1,9 @@
 use bevy::app::AppExit;
 use bevy::input::ButtonInput;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
-use bevy::prelude::{EventReader, EventWriter, KeyCode, Query, Res, ResMut, Resource, Time, Transform};
+use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use bevy_window::Window;
 use crate::plugins::environment::systems::camera_system::CameraController;
-use crate::plugins::network::systems::database::DbConnectionResource;
-
 pub fn console_system(
     mut ctxs: EguiContexts,
     mut state: ResMut<ConsoleState>,

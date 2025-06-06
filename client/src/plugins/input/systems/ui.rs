@@ -1,7 +1,7 @@
 use bevy::app::AppExit;
 use bevy::input::ButtonInput;
-use bevy::prelude::{EventWriter, KeyCode, Query, Res,};
-use bevy_window::{CursorGrabMode, Window};
+use bevy::prelude::*;
+use bevy::window::CursorGrabMode;
 
 pub fn ui_system(
     keyboard_input: Res<ButtonInput<KeyCode>>,
