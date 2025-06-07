@@ -2,13 +2,6 @@ use bevy::prelude::*;
 use crate::plugins::environment::systems::voxels::structure::{ChunkKey, SparseVoxelOctree, Voxel, CHUNK_POW, CHUNK_SIZE};
 
 /// Component attached to the entity that owns the mesh of one chunk.
-#[derive(Component)]
-pub struct Chunk {
-    pub key: ChunkKey,
-    pub voxels: Vec<(IVec3, Voxel)>,   // local coords 0‥15
-    pub dirty: bool,
-}
-
 
 impl SparseVoxelOctree {
     pub fn chunk_has_any_voxel(&self, key: ChunkKey) -> bool {

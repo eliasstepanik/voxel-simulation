@@ -1,8 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 use bevy::prelude::*;
-use crate::plugins::environment::systems::voxels::chunk::Chunk;
 use crate::plugins::environment::systems::voxels::helper::world_to_chunk;
-use crate::plugins::environment::systems::voxels::structure::{ChunkCullingCfg, ChunkKey, SparseVoxelOctree, SpawnedChunks, CHUNK_SIZE};
+use crate::plugins::environment::systems::voxels::structure::*;
 
 
 /// despawn (or hide) every chunk entity whose centre is farther away than the

@@ -5,7 +5,6 @@ use bevy::render::mesh::Mesh;
 use big_space::prelude::GridCell;
 use itertools::Itertools;
 use crate::plugins::big_space::big_space_plugin::RootGrid;
-use crate::plugins::environment::systems::voxels::chunk::Chunk;
 use crate::plugins::environment::systems::voxels::meshing::mesh_chunk;
 use crate::plugins::environment::systems::voxels::structure::*;
 /// rebuilds meshes only for chunks flagged dirty by the octree

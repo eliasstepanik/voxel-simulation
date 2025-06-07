@@ -88,6 +88,14 @@ pub struct AABB {
 pub const CHUNK_SIZE: i32 = 16;         // 16×16×16 voxels
 pub const CHUNK_POW : u32 = 4;
 
+#[derive(Component)]
+pub struct Chunk {
+    pub key: ChunkKey,
+    pub voxels: Vec<(IVec3, Voxel)>,   // local coords 0‥15
+    pub dirty: bool,
+}
+
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct ChunkKey(pub i32, pub i32, pub i32);
 
