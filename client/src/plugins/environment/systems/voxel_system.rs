@@ -25,8 +25,8 @@ pub fn setup(
 
     let color = Color::rgb(0.2, 0.8, 0.2);
     /*generate_voxel_rect(&mut octree,color);*/
-    generate_voxel_sphere(&mut octree, 10, color);
-    
+    generate_voxel_sphere(&mut octree, 100, color);
+
     commands.entity(root.0).with_children(|parent| {
         parent.spawn(
             (
