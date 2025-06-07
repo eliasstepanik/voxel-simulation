@@ -245,3 +245,15 @@ pub fn face_orientation(dx: f32, dy: f32, dz: f32, voxel_size_f: f32) -> (Vec3, 
         }
     }
 }
+
+pub(crate) fn chunk_key_from_world(tree: &SparseVoxelOctree, pos: Vec3) -> ChunkKey {
+    let half = tree.size * 0.5;
+
+    let step = tree.get_spacing_at_depth(tree.max_depth);
+    let scale = CHUNK_SIZE as f32 * step;          // metres per chunk
+    ChunkKey(
+        ((pos.x + half) / scale).floor() as i32,
+        ((pos.y + half) / scale).floor() as i32,
+        ((pos.z + half) / scale).floor() as i32,
+    )
+}

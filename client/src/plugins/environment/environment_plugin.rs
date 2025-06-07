@@ -16,8 +16,18 @@ impl Plugin for EnvironmentPlugin {
             ),
         );
 
-        app.add_systems(Update, (crate::plugins::environment::systems::voxels::rendering::render,crate::plugins::environment::systems::voxels::debug::visualize_octree_system.run_if(should_visualize_octree), crate::plugins::environment::systems::voxels::debug::draw_grid.run_if(should_draw_grid)).chain());
-
+        app.add_systems( 
+            Update,
+            (
+                // old: voxels::rendering::render,
+                crate::plugins::environment::systems::voxels::render_chunks::rebuild_dirty_chunks,
+                crate::plugins::environment::systems::voxels::debug::visualize_octree_system
+                    .run_if(should_visualize_octree),
+                crate::plugins::environment::systems::voxels::debug::draw_grid
+                    .run_if(should_draw_grid),
+            )
+                .chain(),
+        );
 
 
 

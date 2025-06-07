@@ -35,6 +35,7 @@ pub struct SparseVoxelOctree {
     pub show_chunks: bool,
 
     pub dirty: Vec<DirtyVoxel>,
+    pub dirty_chunks: HashSet<ChunkKey>,
 }
 
 impl OctreeNode {
@@ -83,3 +84,8 @@ pub struct AABB {
     pub min: Vec3,
     pub max: Vec3,
 }
+
+pub const CHUNK_SIZE: i32 = 16;         // 16×16×16 voxels
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub struct ChunkKey(pub i32, pub i32, pub i32);

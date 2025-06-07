@@ -5,6 +5,7 @@ use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 use bevy::render::render_asset::RenderAssetUsages;
+use crate::plugins::environment::systems::voxels::helper::chunk_key_from_world;
 use crate::plugins::environment::systems::voxels::structure::{DirtyVoxel, OctreeNode, Ray, SparseVoxelOctree, Voxel, AABB, NEIGHBOR_OFFSETS};
 
 impl SparseVoxelOctree {
@@ -18,6 +19,7 @@ impl SparseVoxelOctree {
             show_world_grid,
             show_chunks,
             dirty: Vec::new(),
+            dirty_chunks: Default::default(),
         }
     }
     pub fn insert(&mut self, position: Vec3, voxel: Voxel) {
@@ -36,7 +38,9 @@ impl SparseVoxelOctree {
         let dirty_voxel = DirtyVoxel{
             position: aligned,
         };
+
         self.dirty.push(dirty_voxel);
+        self.dirty_chunks.insert(chunk_key_from_world(self, position));
 
 
         Self::insert_recursive(&mut self.root, aligned, voxel, self.max_depth);
@@ -80,12 +84,23 @@ impl SparseVoxelOctree {
     pub fn remove(&mut self, position: Vec3) {
         let aligned = self.normalize_to_voxel_at_depth(position, self.max_depth);
 
-        let dirty_voxel = DirtyVoxel{
-            position: aligned,
-        };
-        self.dirty.push(dirty_voxel);
+        self.dirty.push(DirtyVoxel { position: aligned });
 
-        Self::remove_recursive(&mut self.root, aligned.x, aligned.y, aligned.z, self.max_depth);
+        // mark the chunk
+        self.dirty_chunks.insert(chunk_key_from_world(self, position));
+
+        Self::remove_recursive(
+            &mut self.root,
+            aligned.x,
+            aligned.y,
+            aligned.z,
+            self.max_depth,
+        );
+    }
+
+    pub fn clear_dirty_flags(&mut self) {
+        self.dirty.clear();
+        self.dirty_chunks.clear();
     }
 
     fn remove_recursive(
