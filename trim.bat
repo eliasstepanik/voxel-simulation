@@ -3,8 +3,8 @@ rem combine_all.bat – merge every *.rs and *.toml in this tree
 setlocal enabledelayedexpansion
 
 rem Output files
-set "OUT_RS=target/combined.rs"
-set "OUT_TOML=target/combined.toml"
+set "OUT_RS=target/combined.rs.out"
+set "OUT_TOML=target/combined.toml.out"
 
 if exist "%OUT_RS%" del "%OUT_RS%"
 if exist "%OUT_TOML%" del "%OUT_TOML%"

@@ -7,12 +7,11 @@ use big_space::prelude::GridCell;
 use noise::{Fbm, NoiseFn, Perlin};
 use crate::plugins::big_space::big_space_plugin::RootGrid;
 use crate::plugins::environment::systems::camera_system::CameraController;
+use crate::plugins::environment::systems::planet_system::PlanetMaker;
 use crate::plugins::environment::systems::voxels::structure::*;
 
 pub fn setup(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
     root: Res<RootGrid>,
 ) {
     let unit_size = 1.0;
@@ -27,13 +26,15 @@ pub fn setup(
     let color = Color::rgb(0.2, 0.8, 0.2);
     /*generate_voxel_rect(&mut octree,color);*/
     generate_voxel_sphere(&mut octree, 10, color);
-
-    commands.spawn(
-        (
-            Transform::default(),
-            octree
-        )
-    );
+    
+    commands.entity(root.0).with_children(|parent| {
+        parent.spawn(
+            (
+                Transform::default(),
+                octree
+            )
+        );
+    });
 }
 
 fn generate_voxel_sphere(
