@@ -13,7 +13,6 @@ use bevy::render::RenderPlugin;
 use bevy::DefaultPlugins;
 use bevy::input::gamepad::AxisSettingsError::DeadZoneUpperBoundGreaterThanLiveZoneUpperBound;
 use bevy::window::PresentMode;
-use bevy_egui::EguiPlugin;
 use big_space::plugin::BigSpacePlugin;
 use toml;
 use crate::config::Config;
@@ -42,7 +41,7 @@ fn main() {
     register_platform_plugins(&mut app);
 
     app.add_plugins(AppPlugin);
-    app.add_plugins(EguiPlugin);
+
 
 
 

@@ -1,4 +1,4 @@
-
+use bevy::core_pipeline::Skybox;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::math::Vec3;
 use bevy::prelude::*;
@@ -26,11 +26,13 @@ impl Default for CameraController {
     }
 }
 pub fn setup(mut commands: Commands,
-             root:           Res<RootGrid>,) {
+             root:           Res<RootGrid>,
+             asset_server: Res<AssetServer>) {
 
 
 
-    
+    let cubemap_handle = asset_server.load("textures/skybox_space_1024/sky.ktx2");
+    commands.insert_resource(PendingSkybox { handle: cubemap_handle.clone() });
     
     commands.entity(root.0).with_children(|parent| {
         parent.spawn((
@@ -51,7 +53,20 @@ pub fn setup(mut commands: Commands,
                 sensor_height: 0.01866,
             }),
             FloatingOrigin,
+            Skybox {
+                image: cubemap_handle.clone(),
+                brightness: 1000.0,
+                ..default()
+            },
         ));
     });
 
 }
+
+
+
+#[derive(Resource)]
+struct PendingSkybox {
+    handle: Handle<Image>,
+}
+
