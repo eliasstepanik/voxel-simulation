@@ -15,6 +15,7 @@ pub fn rebuild_dirty_chunks(
     mut meshes:     ResMut<Assets<Mesh>>,
     mut materials:  ResMut<Assets<StandardMaterial>>,
     chunk_q:        Query<(Entity, &Chunk)>,
+    mut spawned    : ResMut<SpawnedChunks>,
     root:           Res<RootGrid>,
 ) {
     // map ChunkKey → entity
@@ -71,15 +72,17 @@ pub fn rebuild_dirty_chunks(
 
             if let Some(&ent) = existing.get(&key) {
                 commands.entity(ent).insert(mesh_3d);
+                spawned.0.insert(key, ent);
             } else {
                 commands.entity(root.0).with_children(|p| {
-                    p.spawn((
+                    let e = p.spawn((
                         mesh_3d,
                         material,
                         Transform::default(),
                         GridCell::<i64>::ZERO,
                         Chunk { key, voxels: Vec::new(), dirty: false },
-                    ));
+                    )).id();
+                    spawned.0.insert(key, e);
                 });
             }
         }

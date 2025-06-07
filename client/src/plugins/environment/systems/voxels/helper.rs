@@ -133,7 +133,7 @@ impl SparseVoxelOctree {
 
 
     /// Helper function to recursively traverse the octree to a specific depth.
-    fn get_node_at_depth(
+    pub(crate) fn get_node_at_depth(
         node: &OctreeNode,
         x: f32,
         y: f32,
@@ -257,3 +257,15 @@ pub(crate) fn chunk_key_from_world(tree: &SparseVoxelOctree, pos: Vec3) -> Chunk
         ((pos.z + half) / scale).floor() as i32,
     )
 }
+
+pub fn world_to_chunk(tree: &SparseVoxelOctree, p: Vec3) -> ChunkKey {
+    let step  = tree.get_spacing_at_depth(tree.max_depth);
+    let half  = tree.size * 0.5;
+    let scale = CHUNK_SIZE as f32 * step;
+    ChunkKey(
+        ((p.x + half) / scale).floor() as i32,
+        ((p.y + half) / scale).floor() as i32,
+        ((p.z + half) / scale).floor() as i32,
+    )
+}
+

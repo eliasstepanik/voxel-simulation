@@ -1,6 +1,11 @@
 use bevy::app::{App, Plugin, PreStartup, PreUpdate, Startup};
 use bevy::prelude::*;
-use crate::plugins::environment::systems::voxels::structure::SparseVoxelOctree;
+use crate::plugins::environment::systems::voxels::culling::{despawn_distant_chunks};
+use crate::plugins::environment::systems::voxels::debug::{draw_grid, visualize_octree_system};
+use crate::plugins::environment::systems::voxels::queue_systems;
+use crate::plugins::environment::systems::voxels::queue_systems::{enqueue_visible_chunks, process_chunk_queue};
+use crate::plugins::environment::systems::voxels::render_chunks::rebuild_dirty_chunks;
+use crate::plugins::environment::systems::voxels::structure::{ChunkBudget, ChunkCullingCfg, ChunkQueue, SparseVoxelOctree, SpawnedChunks};
 
 pub struct EnvironmentPlugin;
 impl Plugin for EnvironmentPlugin {
@@ -16,20 +21,37 @@ impl Plugin for EnvironmentPlugin {
             ),
         );
 
-        app.add_systems( 
-            Update,
-            (
-                // old: voxels::rendering::render,
-                crate::plugins::environment::systems::voxels::render_chunks::rebuild_dirty_chunks,
-                crate::plugins::environment::systems::voxels::debug::visualize_octree_system
-                    .run_if(should_visualize_octree),
-                crate::plugins::environment::systems::voxels::debug::draw_grid
-                    .run_if(should_draw_grid),
-            )
-                .chain(),
-        );
+        app.insert_resource(ChunkCullingCfg { view_distance_chunks: 10 });
+        app.insert_resource(ChunkBudget { per_frame: 20 });
+        
+        app
+            // ------------------------------------------------------------------------
+            // resources
+            // ------------------------------------------------------------------------
+            .init_resource::<ChunkQueue>()
+            .init_resource::<SpawnedChunks>()
+            // ------------------------------------------------------------------------
+            // frame update
+            // ------------------------------------------------------------------------
+            .add_systems(
+                Update,
+                (
+                    /* ---------- culling & streaming ---------- */
+                    despawn_distant_chunks,                       // 1.  remove too-far chunks
+                    enqueue_visible_chunks.after(despawn_distant_chunks),         // 2.  find new visible ones
+                    process_chunk_queue .after(enqueue_visible_chunks),           // 3.  spawn ≤ budget per frame
+                    rebuild_dirty_chunks .after(process_chunk_queue),             // 4.  (re)mesh dirty chunks
 
-
+                    /* ---------- optional debug drawing ------- */
+                    visualize_octree_system
+                        .run_if(should_visualize_octree)
+                        .after(rebuild_dirty_chunks),
+                    draw_grid
+                        .run_if(should_draw_grid)
+                        .after(visualize_octree_system),
+                )
+                    .chain(),     // make the whole tuple execute in this exact order
+            );
 
     }
 }

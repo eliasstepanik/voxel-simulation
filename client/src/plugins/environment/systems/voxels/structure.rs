@@ -86,6 +86,32 @@ pub struct AABB {
 }
 
 pub const CHUNK_SIZE: i32 = 16;         // 16×16×16 voxels
+pub const CHUNK_POW : u32 = 4;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct ChunkKey(pub i32, pub i32, pub i32);
+
+
+/// maximum amount of *new* chunk meshes we are willing to create each frame
+#[derive(Resource)]
+pub struct ChunkBudget {
+    pub per_frame: usize,
+}
+impl Default for ChunkBudget {
+    fn default() -> Self {
+        Self { per_frame: 4 }      // tweak to taste
+    }
+}
+
+/// FIFO queue with chunk keys that still need meshing
+#[derive(Resource, Default)]
+pub struct ChunkQueue(pub VecDeque<ChunkKey>);
+
+/// map “which chunk key already has an entity in the world?”
+#[derive(Resource, Default)]
+pub struct SpawnedChunks(pub HashMap<ChunkKey, Entity>);
+
+/// how big the cube around the player is, measured in chunks
+#[derive(Resource)]
+pub struct ChunkCullingCfg { pub view_distance_chunks: i32 }
+impl Default for ChunkCullingCfg { fn default() -> Self { Self { view_distance_chunks: 6 } } }
