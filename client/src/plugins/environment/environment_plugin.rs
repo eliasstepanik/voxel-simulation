@@ -22,7 +22,7 @@ impl Plugin for EnvironmentPlugin {
             ),
         );
 
-        let view_distance_chunks = 10;
+        let view_distance_chunks = 100;
         app.insert_resource(ChunkCullingCfg { view_distance_chunks });
         app.insert_resource(ChunkBudget { per_frame: 20 });
         app.insert_resource(ChunkOffsets::new(view_distance_chunks));
