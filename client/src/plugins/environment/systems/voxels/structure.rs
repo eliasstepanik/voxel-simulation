@@ -173,12 +173,3 @@ impl LodSearchState {
         self.index = 0;
     }
 }
-
-impl FromWorld for LodSearchState {
-    fn from_world(world: &mut World) -> Self {
-        let cfg = world.resource::<ChunkCullingCfg>().clone();
-        let mut state = LodSearchState::default();
-        state.rebuild(&cfg);
-        state
-    }
-}
