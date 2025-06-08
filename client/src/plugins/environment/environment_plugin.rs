@@ -4,7 +4,6 @@ use crate::plugins::environment::systems::voxels::culling::{despawn_distant_chun
 use crate::plugins::environment::systems::voxels::debug::{draw_grid, visualize_octree_system};
 use crate::plugins::environment::systems::voxels::queue_systems;
 use crate::plugins::environment::systems::voxels::queue_systems::{enqueue_visible_chunks, process_chunk_queue};
-                    update_chunk_lods.after(process_chunk_queue),
 use crate::plugins::environment::systems::voxels::render_chunks::rebuild_dirty_chunks;
 use crate::plugins::environment::systems::voxels::lod::update_chunk_lods;
 use crate::plugins::environment::systems::voxels::structure::{ChunkBudget, ChunkCullingCfg, ChunkQueue, SparseVoxelOctree, SpawnedChunks, ChunkOffsets, PrevCameraChunk};
