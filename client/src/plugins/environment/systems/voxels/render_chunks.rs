@@ -9,6 +9,17 @@ use crate::plugins::big_space::big_space_plugin::RootGrid;
 use crate::plugins::environment::systems::voxels::meshing::mesh_chunk;
 use crate::plugins::environment::systems::voxels::structure::*;
 
+/// base distance at which LOD begins to drop
+const LOD_BASE_DISTANCE: f32 = 50.0;
+/// factor controlling how quickly resolution decreases with distance
+const LOD_DROP_FACTOR: f32 = 1.5;
+
+fn lod_depth(distance: f32, max_depth: u32) -> u32 {
+    let scaled = (distance / LOD_BASE_DISTANCE).max(1.0);
+    let drop = (scaled.log2() * LOD_DROP_FACTOR).floor() as i32;
+    max_depth.saturating_sub(drop as u32)
+}
+
 /// rebuilds meshes only for chunks flagged dirty by the octree
 pub fn rebuild_dirty_chunks(
     mut commands : Commands,
@@ -21,6 +32,7 @@ pub fn rebuild_dirty_chunks(
                           &MeshMaterial3d<StandardMaterial>)>,
     mut spawned  : ResMut<SpawnedChunks>,
     root         : Res<RootGrid>,
+    cam_q        : Query<&GlobalTransform, With<Camera>>,
 ) {
     // map ChunkKey → (entity, mesh-handle, material-handle)
     let existing: HashMap<ChunkKey, (Entity, Handle<Mesh>, Handle<StandardMaterial>)> =
@@ -29,6 +41,8 @@ pub fn rebuild_dirty_chunks(
             .map(|(e, c, m, mat)| (c.key, (e, m.0.clone(), mat.0.clone())))
             .collect();
 
+    let cam_pos = cam_q.single().translation();
+
     for mut tree in &mut octrees {
         if tree.dirty_chunks.is_empty() {
             continue;
@@ -36,17 +50,23 @@ pub fn rebuild_dirty_chunks(
 
         //------------------------------------------------ collect voxel data
         let mut bufs = Vec::new();
+        let step_max = tree.get_spacing_at_depth(tree.max_depth);
+
         for key in tree.dirty_chunks.iter().copied() {
             let mut buf =
                 [[[None; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize];
 
             let half = tree.size * 0.5;
-            let step = tree.get_spacing_at_depth(tree.max_depth);
             let origin = Vec3::new(
-                key.0 as f32 * CHUNK_SIZE as f32 * step - half,
-                key.1 as f32 * CHUNK_SIZE as f32 * step - half,
-                key.2 as f32 * CHUNK_SIZE as f32 * step - half,
+                key.0 as f32 * CHUNK_SIZE as f32 * step_max - half,
+                key.1 as f32 * CHUNK_SIZE as f32 * step_max - half,
+                key.2 as f32 * CHUNK_SIZE as f32 * step_max - half,
             );
+
+            let chunk_center = origin + Vec3::splat(step_max * CHUNK_SIZE as f32 * 0.5);
+            let distance = cam_pos.distance(chunk_center);
+            let depth = lod_depth(distance, tree.max_depth);
+            let step = tree.get_spacing_at_depth(depth);
 
             for lx in 0..CHUNK_SIZE {
                 for ly in 0..CHUNK_SIZE {
