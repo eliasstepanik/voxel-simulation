@@ -7,7 +7,7 @@ use crate::plugins::environment::systems::voxels::queue_systems::{enqueue_visibl
                     update_chunk_lods.after(process_chunk_queue),
 use crate::plugins::environment::systems::voxels::render_chunks::rebuild_dirty_chunks;
 use crate::plugins::environment::systems::voxels::lod::update_chunk_lods;
-use crate::plugins::environment::systems::voxels::structure::{ChunkBudget, ChunkCullingCfg, ChunkQueue, SparseVoxelOctree, SpawnedChunks};
+use crate::plugins::environment::systems::voxels::structure::{ChunkBudget, ChunkCullingCfg, ChunkQueue, SparseVoxelOctree, SpawnedChunks, ChunkOffsets, PrevCameraChunk};
 
 pub struct EnvironmentPlugin;
 impl Plugin for EnvironmentPlugin {
@@ -23,8 +23,11 @@ impl Plugin for EnvironmentPlugin {
             ),
         );
 
-        app.insert_resource(ChunkCullingCfg { view_distance_chunks: 10 });
+        let view_distance_chunks = 10;
+        app.insert_resource(ChunkCullingCfg { view_distance_chunks });
         app.insert_resource(ChunkBudget { per_frame: 20 });
+        app.insert_resource(ChunkOffsets::new(view_distance_chunks));
+        app.init_resource::<PrevCameraChunk>();
         app.add_systems(Update, log_mesh_count);
         app
             // ------------------------------------------------------------------------

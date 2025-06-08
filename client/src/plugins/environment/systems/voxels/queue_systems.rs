@@ -9,6 +9,8 @@ use crate::plugins::environment::systems::voxels::structure::*;
 pub fn enqueue_visible_chunks(
     mut queue      : ResMut<ChunkQueue>,
     spawned        : Res<SpawnedChunks>,
+    mut prev_cam   : ResMut<PrevCameraChunk>,
+    offsets        : Res<ChunkOffsets>,
     cfg            : Res<ChunkCullingCfg>,
     cam_q          : Query<&GlobalTransform, With<Camera>>,
     tree_q         : Query<&SparseVoxelOctree>,
@@ -16,35 +18,17 @@ pub fn enqueue_visible_chunks(
     let tree     = tree_q.single();
     let cam_pos  = cam_q.single().translation();
     let centre   = world_to_chunk(tree, cam_pos);
-    let r        = cfg.view_distance_chunks;
 
-    // ------------------------------------------------------------------
-    // 1. gather every *new* candidate chunk together with its distance²
-    // ------------------------------------------------------------------
-    let mut candidates: Vec<(i32 /*dist²*/, ChunkKey)> = Vec::new();
-
-    for dx in -r..=r {
-        for dy in -r..=r {
-            for dz in -r..=r {
-                let key = ChunkKey(centre.0 + dx, centre.1 + dy, centre.2 + dz);
-
-                if spawned.0.contains_key(&key) { continue; }   // already spawned
-                if queue.0.contains(&key)       { continue; }   // already queued
-                if !tree.chunk_has_any_voxel(key) { continue; } // empty air
-
-                let dist2 = dx*dx + dy*dy + dz*dz;              // squared distance
-                candidates.push((dist2, key));
-            }
-        }
+    if prev_cam.0 == Some(centre) {
+        return;
     }
+    prev_cam.0 = Some(centre);
 
-    // ------------------------------------------------------------------
-    // 2. sort by distance so nearest chunks enter the queue first
-    // ------------------------------------------------------------------
-    candidates.sort_by_key(|&(d2, _)| d2);
-
-    // push into FIFO queue in that order
-    for (_, key) in candidates {
+    for offset in &offsets.0 {
+        let key = ChunkKey(centre.0 + offset.x, centre.1 + offset.y, centre.2 + offset.z);
+        if spawned.0.contains_key(&key) { continue; }
+        if queue.0.contains(&key)       { continue; }
+        if !tree.occupied_chunks.contains(&key) { continue; }
         queue.0.push_back(key);
     }
 }

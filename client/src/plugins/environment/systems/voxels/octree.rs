@@ -20,6 +20,7 @@ impl SparseVoxelOctree {
             show_chunks,
             dirty: Vec::new(),
             dirty_chunks: Default::default(),
+            occupied_chunks: Default::default(),
         }
     }
     pub fn insert(&mut self, position: Vec3, voxel: Voxel) {
@@ -40,7 +41,9 @@ impl SparseVoxelOctree {
         };
 
         self.dirty.push(dirty_voxel);
-        self.dirty_chunks.insert(chunk_key_from_world(self, position));
+        let key = chunk_key_from_world(self, position);
+        self.dirty_chunks.insert(key);
+        self.occupied_chunks.insert(key);
 
 
         Self::insert_recursive(&mut self.root, aligned, voxel, self.max_depth);
@@ -87,7 +90,8 @@ impl SparseVoxelOctree {
         self.dirty.push(DirtyVoxel { position: aligned });
 
         // mark the chunk
-        self.dirty_chunks.insert(chunk_key_from_world(self, position));
+        let key = chunk_key_from_world(self, position);
+        self.dirty_chunks.insert(key);
 
         Self::remove_recursive(
             &mut self.root,
@@ -96,6 +100,10 @@ impl SparseVoxelOctree {
             aligned.z,
             self.max_depth,
         );
+
+        if !self.chunk_has_any_voxel(key) {
+            self.occupied_chunks.remove(&key);
+        }
     }
 
     pub fn clear_dirty_flags(&mut self) {

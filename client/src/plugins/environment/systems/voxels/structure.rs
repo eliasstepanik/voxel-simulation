@@ -36,6 +36,7 @@ pub struct SparseVoxelOctree {
 
     pub dirty: Vec<DirtyVoxel>,
     pub dirty_chunks: HashSet<ChunkKey>,
+    pub occupied_chunks: HashSet<ChunkKey>,
 }
 
 impl OctreeNode {
@@ -127,3 +128,24 @@ pub struct SpawnedChunks(pub HashMap<ChunkKey, Entity>);
 #[derive(Resource)]
 pub struct ChunkCullingCfg { pub view_distance_chunks: i32 }
 impl Default for ChunkCullingCfg { fn default() -> Self { Self { view_distance_chunks: 6 } } }
+
+#[derive(Resource, Default)]
+pub struct PrevCameraChunk(pub Option<ChunkKey>);
+
+#[derive(Resource, Clone)]
+pub struct ChunkOffsets(pub Vec<IVec3>);
+
+impl ChunkOffsets {
+    pub fn new(radius: i32) -> Self {
+        let mut offsets = Vec::new();
+        for dx in -radius..=radius {
+            for dy in -radius..=radius {
+                for dz in -radius..=radius {
+                    offsets.push(IVec3::new(dx, dy, dz));
+                }
+            }
+        }
+        offsets.sort_by_key(|v| v.x * v.x + v.y * v.y + v.z * v.z);
+        Self(offsets)
+    }
+}
