@@ -121,5 +121,28 @@ pub struct SpawnedChunks(pub HashMap<ChunkKey, Entity>);
 
 /// how big the cube around the player is, measured in chunks
 #[derive(Resource)]
-pub struct ChunkCullingCfg { pub view_distance_chunks: i32 }
-impl Default for ChunkCullingCfg { fn default() -> Self { Self { view_distance_chunks: 6 } } }
+pub struct ChunkCullingCfg {
+    /// full resolution view distance
+    pub view_distance_chunks: i32,
+    /// additional distance for low resolution rendering
+    pub lod_distance_chunks: i32,
+    /// how many octree levels to skip when meshing far chunks
+    pub lod_level: u32,
+}
+impl Default for ChunkCullingCfg {
+    fn default() -> Self {
+        Self {
+            view_distance_chunks: 6,
+            lod_distance_chunks: 12,
+            lod_level: 2,
+        }
+    }
+}
+
+/// component marking the level of detail of a spawned chunk
+#[derive(Component)]
+pub struct LodLevel(pub u32);
+
+/// queue of far LOD chunks
+#[derive(Resource, Default)]
+pub struct LodChunkQueue(pub VecDeque<ChunkKey>);
