@@ -269,3 +269,62 @@ pub fn world_to_chunk(tree: &SparseVoxelOctree, p: Vec3) -> ChunkKey {
     )
 }
 
+impl AABB {
+    pub fn intersects_aabb(&self, other: &AABB) -> bool {
+        self.min.x <= other.max.x &&
+            self.max.x >= other.min.x &&
+            self.min.y <= other.max.y &&
+            self.max.y >= other.min.y &&
+            self.min.z <= other.max.z &&
+            self.max.z >= other.min.z
+    }
+
+    pub fn center(&self) -> Vec3 {
+        (self.min + self.max) * 0.5
+    }
+}
+
+impl SparseVoxelOctree {
+    pub fn collect_voxels_in_region(&self, min: Vec3, max: Vec3) -> Vec<(Vec3, Voxel)> {
+        let half_size = self.size * 0.5;
+        let root_bounds = AABB {
+            min: Vec3::new(-half_size, -half_size, -half_size),
+            max: Vec3::new(half_size, half_size, half_size),
+        };
+        let mut voxels = Vec::new();
+        self.collect_voxels_in_region_recursive(&self.root, root_bounds, min, max, &mut voxels);
+        voxels
+    }
+
+    fn collect_voxels_in_region_recursive(
+        &self,
+        node: &OctreeNode,
+        node_bounds: AABB,
+        min: Vec3,
+        max: Vec3,
+        out: &mut Vec<(Vec3, Voxel)>,
+    ) {
+        if !node_bounds.intersects_aabb(&AABB { min, max }) {
+            return;
+        }
+
+        if node.is_leaf {
+            if let Some(voxel) = &node.voxel {
+                let center = node_bounds.center();
+                if center.x >= min.x && center.x <= max.x &&
+                    center.y >= min.y && center.y <= max.y &&
+                    center.z >= min.z && center.z <= max.z
+                {
+                    out.push((center, *voxel));
+                }
+            }
+        }
+
+        if let Some(children) = &node.children {
+            for (i, child) in children.iter().enumerate() {
+                let child_bounds = self.compute_child_bounds(&node_bounds, i);
+                self.collect_voxels_in_region_recursive(child, child_bounds, min, max, out);
+            }
+        }
+    }
+}

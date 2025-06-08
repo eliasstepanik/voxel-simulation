@@ -93,6 +93,7 @@ pub struct Chunk {
     pub key: ChunkKey,
     pub voxels: Vec<(IVec3, Voxel)>,   // local coords 0‥15
     pub dirty: bool,
+    
 }
 
 

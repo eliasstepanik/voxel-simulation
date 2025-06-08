@@ -8,25 +8,34 @@ use crate::plugins::environment::systems::voxels::structure::*;
 /// configured radius
 
 pub fn despawn_distant_chunks(
-    mut commands   : Commands,
-    cam_q          : Query<&GlobalTransform, With<Camera>>,
-    tree_q         : Query<&SparseVoxelOctree>,
-    mut spawned    : ResMut<SpawnedChunks>,
-    chunk_q        : Query<&Chunk>,
-    cfg            : Res<ChunkCullingCfg>,
+    mut commands : Commands,
+    cam_q        : Query<&GlobalTransform, With<Camera>>,
+    tree_q       : Query<&SparseVoxelOctree>,
+    mut spawned  : ResMut<SpawnedChunks>,
+    chunk_q      : Query<(Entity,
+                          &Chunk,
+                          &Mesh3d,
+                          &MeshMaterial3d<StandardMaterial>)>,
+    mut meshes   : ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    cfg          : Res<ChunkCullingCfg>,
 ) {
     let tree   = tree_q.single();
     let cam    = cam_q.single().translation();
-    let center = world_to_chunk(tree, cam);
+    let centre = world_to_chunk(tree, cam);
 
-    for chunk in chunk_q.iter() {
+    for (ent, chunk, mesh3d, mat3d) in chunk_q.iter() {
         let ChunkKey(x, y, z) = chunk.key;
-        if  (x - center.0).abs() > cfg.view_distance_chunks ||
-            (y - center.1).abs() > cfg.view_distance_chunks ||
-            (z - center.2).abs() > cfg.view_distance_chunks {
-            if let Some(ent) = spawned.0.remove(&chunk.key) {
-                commands.entity(ent).despawn_recursive();
-            }
+        if  (x - centre.0).abs() > cfg.view_distance_chunks ||
+            (y - centre.1).abs() > cfg.view_distance_chunks ||
+            (z - centre.2).abs() > cfg.view_distance_chunks {
+
+            // free assets – borrow, don't move
+            meshes.remove(&mesh3d.0);
+            materials.remove(&mat3d.0);
+
+            commands.entity(ent).despawn_recursive();
+            spawned.0.remove(&chunk.key);
         }
     }
 }
