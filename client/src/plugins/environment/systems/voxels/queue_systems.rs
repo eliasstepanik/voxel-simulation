@@ -83,6 +83,20 @@ pub fn enqueue_lod_chunks(
     let cam_pos = cam_q.single().translation();
     let centre  = world_to_chunk(tree, cam_pos);
 
+    if search.last_center.map_or(true, |c| c != centre) {
+        search.last_center = Some(centre);
+        search.index = 0;
+        let mut tmp: Vec<_> = queue.0.drain(..).collect();
+        tmp.sort_by_key(|key| {
+            let ChunkKey(x, y, z) = *key;
+            let dx = x - centre.0;
+            let dy = y - centre.1;
+            let dz = z - centre.2;
+            dx * dx + dy * dy + dz * dz
+        });
+        queue.0.extend(tmp);
+    }
+
     let checks_per_frame = capacity.max(1) * 2;
     if search.offsets.is_empty() {
         search.rebuild(cfg.as_ref());

@@ -148,10 +148,17 @@ pub struct LodLevel(pub u32);
 pub struct LodChunkQueue(pub VecDeque<ChunkKey>);
 
 /// helper data for efficiently scanning far LOD chunks
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct LodSearchState {
     pub offsets: Vec<IVec3>,
     pub index: usize,
+    pub last_center: Option<ChunkKey>,
+}
+
+impl Default for LodSearchState {
+    fn default() -> Self {
+        Self { offsets: Vec::new(), index: 0, last_center: None }
+    }
 }
 
 impl LodSearchState {
