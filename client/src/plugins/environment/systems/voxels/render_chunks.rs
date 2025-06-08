@@ -9,14 +9,14 @@ use crate::plugins::big_space::big_space_plugin::RootGrid;
 use crate::plugins::environment::systems::voxels::meshing::mesh_chunk;
 use crate::plugins::environment::systems::voxels::structure::*;
 
-/// base distance at which LOD begins to drop
-const LOD_BASE_DISTANCE: f32 = 50.0;
-/// factor controlling how quickly resolution decreases with distance
-const LOD_DROP_FACTOR: f32 = 1.5;
+/// distance from the camera at which LOD starts degrading
+const LOD_START_DISTANCE: f32 = 30.0;
+/// controls how aggressively detail decreases with distance (<1.0 = slower)
+const LOD_DISTANCE_SCALE: f32 = 0.5;
 
 fn lod_depth(distance: f32, max_depth: u32) -> u32 {
-    let scaled = (distance / LOD_BASE_DISTANCE).max(1.0);
-    let drop = (scaled.log2() * LOD_DROP_FACTOR).floor() as i32;
+    let scaled = (distance / LOD_START_DISTANCE).max(1.0).log2();
+    let drop = (scaled / LOD_DISTANCE_SCALE).floor() as i32;
     max_depth.saturating_sub(drop as u32)
 }
 
