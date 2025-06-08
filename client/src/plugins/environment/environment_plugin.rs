@@ -21,7 +21,7 @@ impl Plugin for EnvironmentPlugin {
             ),
         );
 
-        app.insert_resource(ChunkCullingCfg { view_distance_chunks: 10 });
+        app.insert_resource(ChunkCullingCfg { view_distance_chunks: 100 });
         app.insert_resource(ChunkBudget { per_frame: 20 });
         app.add_systems(Update, log_mesh_count);
         app
