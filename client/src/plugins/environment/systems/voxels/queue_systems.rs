@@ -63,7 +63,8 @@ pub fn process_chunk_queue(
     }
 }
 
-/// enqueue far away chunks for low resolution rendering when nothing close is queued
+/// enqueue far away chunks for low resolution rendering when the main queue is
+/// not filling the entire budget
 pub fn enqueue_lod_chunks(
     mut queue      : ResMut<LodChunkQueue>,
     spawned        : Res<SpawnedChunks>,
@@ -74,13 +75,15 @@ pub fn enqueue_lod_chunks(
     mut search     : ResMut<LodSearchState>,
     budget         : Res<ChunkBudget>,
 ) {
-    if !main_queue.0.is_empty() { return; }
+    // only spend spare budget on far chunks
+    if main_queue.0.len() >= budget.per_frame { return; }
+    let capacity = budget.per_frame - main_queue.0.len();
 
     let tree    = tree_q.single();
     let cam_pos = cam_q.single().translation();
     let centre  = world_to_chunk(tree, cam_pos);
 
-    let checks_per_frame = budget.per_frame.max(1) * 2;
+    let checks_per_frame = capacity.max(1) * 2;
     if search.offsets.is_empty() {
         search.rebuild(cfg.as_ref());
     }
@@ -94,7 +97,7 @@ pub fn enqueue_lod_chunks(
         if queue.0.contains(&key) { continue; }
         if !tree.chunk_has_any_voxel(key) { continue; }
         queue.0.push_back(key);
-        if queue.0.len() >= budget.per_frame { break; }
+        if queue.0.len() >= capacity { break; }
     }
 }
 
