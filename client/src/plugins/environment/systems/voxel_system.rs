@@ -1,41 +1,32 @@
-use bevy::asset::RenderAssetUsages;
-use bevy::pbr::wireframe::{Wireframe, WireframeColor};
+use crate::plugins::big_space::big_space_plugin::RootGrid;
+use crate::plugins::environment::systems::voxels::structure::*;
+
 use bevy::prelude::*;
 use bevy::render::mesh::*;
-use big_space::floating_origins::FloatingOrigin;
-use big_space::prelude::GridCell;
-use noise::{Fbm, NoiseFn, Perlin};
-use crate::plugins::big_space::big_space_plugin::RootGrid;
-use crate::plugins::environment::systems::camera_system::CameraController;
-use crate::plugins::environment::systems::planet_system::PlanetMaker;
-use crate::plugins::environment::systems::voxels::structure::*;
+use noise::{NoiseFn, Perlin};
 
 pub fn setup(
     mut commands: Commands,
     root: Res<RootGrid>,
 ) {
-    let unit_size = 1.0;
-
-    let octree_base_size = 64.0 * unit_size; // Octree's total size in your world space
+    let unit_size = 1.0_f32;
+    let octree_base_size = 64.0 * unit_size;
     let octree_depth = 10;
 
+    // 1. Create octree and wrap in Arc<Mutex<>> for thread-safe generation
+    let mut octree = SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false);
 
-    let mut octree = SparseVoxelOctree::new(octree_depth, octree_base_size as f32, false, false, false);
-
-
+    // 2. Generate sphere in parallel, dropping the cloned Arc inside the function
     let color = Color::rgb(0.2, 0.8, 0.2);
-    /*generate_voxel_rect(&mut octree,color);*/
+    
     generate_voxel_sphere(&mut octree, 100, color);
 
+    // 4. Spawn entity with both Transform and the real octree component
     commands.entity(root.0).with_children(|parent| {
-        parent.spawn(
-            (
-                Transform::default(),
-                octree
-            )
-        );
+        parent.spawn((Transform::default(), octree));
     });
 }
+
 
 fn generate_voxel_sphere(
     octree: &mut SparseVoxelOctree,
@@ -75,7 +66,6 @@ fn generate_voxel_sphere(
         }
     }
 }
-
 
 
 /// Inserts a 16x256x16 "column" of voxels into the octree at (0,0,0) corner.
@@ -151,3 +141,45 @@ fn generate_large_plane(
     }
 }
 
+
+pub fn generate_solid_plane_with_noise(
+    octree: &mut SparseVoxelOctree,
+    width: usize,
+    depth: usize,
+    color: Color,
+    noise: &Perlin,
+    frequency: f32,
+    amplitude: f32,
+) {
+    // Size of one voxel at the deepest level
+    let step = octree.get_spacing_at_depth(octree.max_depth);
+
+    for ix in 0..width {
+        let x = ix as f32;
+        for iz in 0..depth {
+            let z = iz as f32;
+
+            // Sample Perlin noise at scaled coordinates
+            let sample_x = x * frequency;
+            let sample_z = z * frequency;
+            let noise_val = noise.get([sample_x as f64, sample_z as f64]) as f32;
+
+            // Height in world units
+            let height_world = noise_val * amplitude;
+            // Convert height to number of voxel layers
+            let max_layer = (height_world / step).ceil() as usize;
+
+            // Fill from layer 0 up to max_layer
+            for iy in 0..=max_layer {
+                let position = Vec3::new(
+                    x * step,
+                    iy as f32 * step,
+                    z * step,
+                );
+
+                let voxel = Voxel { color };
+                octree.insert(position, voxel);
+            }
+        }
+    }
+}
