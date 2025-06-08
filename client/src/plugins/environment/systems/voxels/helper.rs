@@ -269,6 +269,16 @@ pub fn world_to_chunk(tree: &SparseVoxelOctree, p: Vec3) -> ChunkKey {
     )
 }
 
+pub fn chunk_center_world(tree: &SparseVoxelOctree, key: ChunkKey) -> Vec3 {
+    let half = tree.size * 0.5;
+    let step = tree.get_spacing_at_depth(tree.max_depth);
+    Vec3::new(
+        (key.0 as f32 + 0.5) * CHUNK_SIZE as f32 * step - half,
+        (key.1 as f32 + 0.5) * CHUNK_SIZE as f32 * step - half,
+        (key.2 as f32 + 0.5) * CHUNK_SIZE as f32 * step - half,
+    )
+}
+
 impl AABB {
     pub fn intersects_aabb(&self, other: &AABB) -> bool {
         self.min.x <= other.max.x &&

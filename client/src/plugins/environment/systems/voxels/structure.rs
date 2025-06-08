@@ -93,8 +93,11 @@ pub struct Chunk {
     pub key: ChunkKey,
     pub voxels: Vec<(IVec3, Voxel)>,   // local coords 0‥15
     pub dirty: bool,
-    
+
 }
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct ChunkLod(pub u32);
 
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]

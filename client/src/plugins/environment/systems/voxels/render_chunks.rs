@@ -18,15 +18,16 @@ pub fn rebuild_dirty_chunks(
     chunk_q      : Query<(Entity,
                           &Chunk,
                           &Mesh3d,
-                          &MeshMaterial3d<StandardMaterial>)>,
+                          &MeshMaterial3d<StandardMaterial>,
+                          &ChunkLod)>,
     mut spawned  : ResMut<SpawnedChunks>,
     root         : Res<RootGrid>,
 ) {
     // map ChunkKey → (entity, mesh-handle, material-handle)
-    let existing: HashMap<ChunkKey, (Entity, Handle<Mesh>, Handle<StandardMaterial>)> =
+    let existing: HashMap<ChunkKey, (Entity, Handle<Mesh>, Handle<StandardMaterial>, u32)> =
         chunk_q
             .iter()
-            .map(|(e, c, m, mat)| (c.key, (e, m.0.clone(), mat.0.clone())))
+            .map(|(e, c, m, mat, lod)| (c.key, (e, m.0.clone(), mat.0.clone(), lod.0)))
             .collect();
 
     for mut tree in &mut octrees {
@@ -37,6 +38,7 @@ pub fn rebuild_dirty_chunks(
         //------------------------------------------------ collect voxel data
         let mut bufs = Vec::new();
         for key in tree.dirty_chunks.iter().copied() {
+            let lod = existing.get(&key).map(|v| v.3).unwrap_or(0);
             let mut buf =
                 [[[None; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize];
 
@@ -48,24 +50,40 @@ pub fn rebuild_dirty_chunks(
                 key.2 as f32 * CHUNK_SIZE as f32 * step - half,
             );
 
-            for lx in 0..CHUNK_SIZE {
-                for ly in 0..CHUNK_SIZE {
-                    for lz in 0..CHUNK_SIZE {
-                        let world = origin
-                            + Vec3::new(lx as f32 * step, ly as f32 * step, lz as f32 * step);
-                        if let Some(v) = tree.get_voxel_at_world_coords(world) {
-                            buf[lx as usize][ly as usize][lz as usize] = Some(*v);
+            let mult = 1 << lod;
+            for gx in (0..CHUNK_SIZE).step_by(mult as usize) {
+                for gy in (0..CHUNK_SIZE).step_by(mult as usize) {
+                    for gz in (0..CHUNK_SIZE).step_by(mult as usize) {
+                        let center = origin
+                            + Vec3::new(
+                                (gx + mult / 2) as f32 * step,
+                                (gy + mult / 2) as f32 * step,
+                                (gz + mult / 2) as f32 * step,
+                            );
+                        if let Some(v) = tree.get_voxel_at_world_coords(center) {
+                            for lx in 0..mult {
+                                for ly in 0..mult {
+                                    for lz in 0..mult {
+                                        let ix = gx + lx;
+                                        let iy = gy + ly;
+                                        let iz = gz + lz;
+                                        if ix < CHUNK_SIZE && iy < CHUNK_SIZE && iz < CHUNK_SIZE {
+                                            buf[ix as usize][iy as usize][iz as usize] = Some(*v);
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            bufs.push((key, buf, origin, step));
+            bufs.push((key, buf, origin, step, lod));
         }
 
         //------------------------------------------------ create / update
-        for (key, buf, origin, step) in bufs {
-            if let Some((ent, mesh_h, _mat_h)) = existing.get(&key).cloned() {
+        for (key, buf, origin, step, lod) in bufs {
+            if let Some((ent, mesh_h, _mat_h, _)) = existing.get(&key).cloned() {
                 // update mesh in-place; keeps old asset id
                 if let Some(mesh) = meshes.get_mut(&mesh_h) {
                     *mesh = mesh_chunk(&buf, origin, step, &tree);
@@ -84,6 +102,7 @@ pub fn rebuild_dirty_chunks(
                             Transform::default(),
                             GridCell::<i64>::ZERO,
                             Chunk { key, voxels: Vec::new(), dirty: false },
+                            ChunkLod(lod),
                             /*Wireframe,*/
                         ))
                         .id();

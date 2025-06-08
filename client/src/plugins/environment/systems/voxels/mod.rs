@@ -8,3 +8,4 @@ mod meshing;
 pub mod render_chunks;
 pub mod culling;
 pub mod queue_systems;
+pub mod lod;
