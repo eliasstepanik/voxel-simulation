@@ -71,27 +71,30 @@ pub fn enqueue_lod_chunks(
     cam_q          : Query<&GlobalTransform, With<Camera>>,
     tree_q         : Query<&SparseVoxelOctree>,
     main_queue     : Res<ChunkQueue>,
+    mut search     : ResMut<LodSearchState>,
+    budget         : Res<ChunkBudget>,
 ) {
     if !main_queue.0.is_empty() { return; }
 
     let tree    = tree_q.single();
     let cam_pos = cam_q.single().translation();
     let centre  = world_to_chunk(tree, cam_pos);
-    let r_far   = cfg.lod_distance_chunks;
-    let r_near  = cfg.view_distance_chunks;
 
-    for dx in -r_far..=r_far {
-        for dy in -r_far..=r_far {
-            for dz in -r_far..=r_far {
-                // skip near range
-                if dx.abs() <= r_near && dy.abs() <= r_near && dz.abs() <= r_near { continue; }
-                let key = ChunkKey(centre.0 + dx, centre.1 + dy, centre.2 + dz);
-                if spawned.0.contains_key(&key) { continue; }
-                if queue.0.contains(&key) { continue; }
-                if !tree.chunk_has_any_voxel(key) { continue; }
-                queue.0.push_back(key);
-            }
-        }
+    let checks_per_frame = budget.per_frame.max(1) * 2;
+    if search.offsets.is_empty() {
+        search.rebuild(cfg.as_ref());
+    }
+    let total = search.offsets.len();
+    for _ in 0..checks_per_frame {
+        if total == 0 { break; }
+        let off   = search.offsets[search.index];
+        search.index = (search.index + 1) % total;
+        let key   = ChunkKey(centre.0 + off.x, centre.1 + off.y, centre.2 + off.z);
+        if spawned.0.contains_key(&key) { continue; }
+        if queue.0.contains(&key) { continue; }
+        if !tree.chunk_has_any_voxel(key) { continue; }
+        queue.0.push_back(key);
+        if queue.0.len() >= budget.per_frame { break; }
     }
 }
 

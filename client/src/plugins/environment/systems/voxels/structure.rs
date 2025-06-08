@@ -146,3 +146,39 @@ pub struct LodLevel(pub u32);
 /// queue of far LOD chunks
 #[derive(Resource, Default)]
 pub struct LodChunkQueue(pub VecDeque<ChunkKey>);
+
+/// helper data for efficiently scanning far LOD chunks
+#[derive(Resource, Default)]
+pub struct LodSearchState {
+    pub offsets: Vec<IVec3>,
+    pub index: usize,
+}
+
+impl LodSearchState {
+    pub fn rebuild(&mut self, cfg: &ChunkCullingCfg) {
+        self.offsets.clear();
+        let far = cfg.lod_distance_chunks;
+        let near = cfg.view_distance_chunks;
+        for dx in -far..=far {
+            for dy in -far..=far {
+                for dz in -far..=far {
+                    if dx.abs() <= near && dy.abs() <= near && dz.abs() <= near {
+                        continue;
+                    }
+                    self.offsets.push(IVec3::new(dx, dy, dz));
+                }
+            }
+        }
+        self.offsets.sort_by_key(|v| v.x * v.x + v.y * v.y + v.z * v.z);
+        self.index = 0;
+    }
+}
+
+impl FromWorld for LodSearchState {
+    fn from_world(world: &mut World) -> Self {
+        let cfg = world.resource::<ChunkCullingCfg>().clone();
+        let mut state = LodSearchState::default();
+        state.rebuild(&cfg);
+        state
+    }
+}

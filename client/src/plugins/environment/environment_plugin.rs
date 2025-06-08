@@ -18,6 +18,7 @@ use crate::plugins::environment::systems::voxels::structure::{
     ChunkCullingCfg,
     ChunkQueue,
     LodChunkQueue,
+    LodSearchState,
     SparseVoxelOctree,
     SpawnedChunks,
 };
@@ -49,6 +50,7 @@ impl Plugin for EnvironmentPlugin {
             // ------------------------------------------------------------------------
             .init_resource::<ChunkQueue>()
             .init_resource::<LodChunkQueue>()
+            .init_resource::<LodSearchState>()
             .init_resource::<SpawnedChunks>()
             // ------------------------------------------------------------------------
             // frame update
