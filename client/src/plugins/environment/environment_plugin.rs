@@ -71,7 +71,3 @@ fn should_visualize_octree(octree_query: Query<&SparseVoxelOctree>,) -> bool {
 fn should_draw_grid(octree_query: Query<&SparseVoxelOctree>,) -> bool {
     octree_query.single().show_world_grid
 }
-
-fn should_visualize_chunks(octree_query: Query<&SparseVoxelOctree>,) -> bool {
-    octree_query.single().show_chunks
-}

@@ -20,7 +20,6 @@ impl SparseVoxelOctree {
             size,
             show_wireframe,
             show_world_grid,
-            show_chunks,
             dirty: Vec::new(),
             dirty_chunks: Default::default(),
             occupied_chunks: Default::default(),
@@ -482,6 +481,7 @@ impl SparseVoxelOctree {
         self.dirty.clear();
         self.dirty_chunks.clear();
         self.occupied_chunks.clear();
+        
         let voxels = Self::collect_voxels_from_node(&self.root, self.size);
         for (pos, _voxel, _depth) in voxels {
             let key = chunk_key_from_world(self, pos);

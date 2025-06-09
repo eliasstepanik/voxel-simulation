@@ -1,5 +1,7 @@
+use std::path::Path;
 use bevy::prelude::*;
 use crate::plugins::environment::systems::camera_system::CameraController;
+use crate::plugins::environment::systems::voxels::octree;
 use crate::plugins::environment::systems::voxels::structure::*;
 
 ///TODO
@@ -28,16 +30,37 @@ pub fn voxel_system(
             octree.show_world_grid = !octree.show_world_grid;
         }
     }
-    if keyboard_input.just_pressed(KeyCode::F4){
-        for mut octree in octree_query.iter_mut() {
-            octree.show_chunks = !octree.show_chunks;
-        }
-    }
+
     if keyboard_input.just_pressed(KeyCode::KeyQ) && window.cursor_options.visible == false{
         for mut octree in octree_query.iter_mut() {
             octree.insert(transform.translation, Voxel::new(Color::srgb(1.0, 0.0, 0.0)));
         }
     }
+    if keyboard_input.just_pressed(KeyCode::F4){
+        let path = Path::new("octree.bin");
+        for octree in octree_query.iter() {
+            if let Err(e) = octree.save_to_file(path) {
+                error!("failed to save octree: {e}");
+            }
+        }
+    }
+/*    if keyboard_input.just_pressed(KeyCode::F5){
+        let path = Path::new("octree.bin");
+        if path.exists() {
+            let path = Path::new("octree.bin");
+
+            let mut octree = if path.exists() {
+                match SparseVoxelOctree::load_from_file(path) {
+                    Ok(tree) => tree,
+                    Err(err) => {
+                        error!("failed to load octree: {err}");
+                    }
+                }
+            }
+            
+        }
+    }*/
+
 
     // =======================
     // 6) Building

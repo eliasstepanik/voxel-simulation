@@ -42,7 +42,7 @@ pub struct OctreeNode {
 }
 /// Represents the root of the sparse voxel octree.
 /// Represents the root of the sparse voxel octree.
-#[derive(Debug, Component, Serialize, Deserialize)]
+#[derive(Debug, Component, Serialize, Deserialize, Clone)]
 pub struct SparseVoxelOctree {
 
     pub root: OctreeNode,
@@ -50,7 +50,6 @@ pub struct SparseVoxelOctree {
     pub size: f32,
     pub show_wireframe: bool,
     pub show_world_grid: bool,
-    pub show_chunks: bool,
 
     #[serde(skip)]
     pub dirty: Vec<DirtyVoxel>,
