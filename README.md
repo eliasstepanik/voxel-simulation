@@ -1,6 +1,21 @@
 # voxel-simulation
 
+Voxel Simulation is an experimental 3D world built with the
+[Bevy](https://bevyengine.org/) game engine. The project showcases
+streaming voxel terrain, high precision coordinates via the
+[big_space](https://crates.io/crates/big_space) crate and various debug
+tools.
 
+![Demo screenshot](images/voxel-simulation-demo.png)
+
+## Running
+
+Execute the following command from the repository root to compile and
+launch the demo:
+
+```bash
+cargo run --release -p voxel-simulation
+```
 
 ## License
 
