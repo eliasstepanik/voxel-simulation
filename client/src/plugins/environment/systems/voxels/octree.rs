@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 use bevy::render::render_asset::RenderAssetUsages;
 use crate::plugins::environment::systems::voxels::helper::chunk_key_from_world;
-use crate::plugins::environment::systems::voxels::structure::{DirtyVoxel, OctreeNode, Ray, SparseVoxelOctree, Voxel, AABB, NEIGHBOR_OFFSETS};
+use crate::plugins::environment::systems::voxels::structure::{DirtyVoxel, OctreeNode, Ray, SparseVoxelOctree, Voxel, AABB, NEIGHBOR_OFFSETS, CHUNK_SIZE, ChunkKey};
 
 impl SparseVoxelOctree {
     /// Creates a new octree with the specified max depth, size, and wireframe visibility.
@@ -138,6 +138,21 @@ impl SparseVoxelOctree {
         for (cond, n) in neighbors.iter() {
             if *cond && self.occupied_chunks.contains(n) {
                 self.dirty_chunks.insert(*n);
+            }
+        }
+    }
+
+    /// Mark all six neighbor chunks of the given key as dirty if they exist.
+    pub fn mark_neighbors_dirty_from_key(&mut self, key: ChunkKey) {
+        let offsets = [
+            (-1, 0, 0), (1, 0, 0),
+            (0, -1, 0), (0, 1, 0),
+            (0, 0, -1), (0, 0, 1),
+        ];
+        for (dx, dy, dz) in offsets {
+            let neighbor = ChunkKey(key.0 + dx, key.1 + dy, key.2 + dz);
+            if self.occupied_chunks.contains(&neighbor) {
+                self.dirty_chunks.insert(neighbor);
             }
         }
     }
