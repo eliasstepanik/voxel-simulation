@@ -18,8 +18,9 @@ pub fn setup(
 
     // 2. Generate sphere in parallel, dropping the cloned Arc inside the function
     let color = Color::rgb(0.2, 0.8, 0.2);
-    
-    generate_voxel_sphere(&mut octree, 100, color);
+
+    generate_voxel_sphere(&mut octree, 50, color);
+    /*generate_large_plane(&mut octree, 4000, 4000, color);*/
 
     // 4. Spawn entity with both Transform and the real octree component
     commands.entity(root.0).with_children(|parent| {

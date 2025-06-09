@@ -117,8 +117,34 @@ impl Default for ChunkBudget {
 }
 
 /// FIFO queue with chunk keys that still need meshing
-#[derive(Resource, Default)]
-pub struct ChunkQueue(pub VecDeque<ChunkKey>);
+#[derive(Resource,Default)]
+pub struct ChunkQueue {
+    order:     VecDeque<ChunkKey>, // keeps first-in-first-out order
+    in_queue:  HashSet<ChunkKey>,  // O(1) membership test
+}
+
+impl ChunkQueue {
+    /// Returns true if the key is already queued.
+    #[inline]
+    pub fn contains(&self, key: &ChunkKey) -> bool {
+        self.in_queue.contains(key)
+    }
+
+    /// Adds the key if it is not queued yet.
+    #[inline]
+    pub fn push(&mut self, key: ChunkKey) {
+        if self.in_queue.insert(key) {
+            self.order.push_back(key);
+        }
+    }
+
+    /// Pops the oldest key.
+    /// Always keeps `in_queue` in sync.
+    #[inline]
+    pub fn pop_front(&mut self) -> Option<ChunkKey> {
+        self.order.pop_front().map(|k| { self.in_queue.remove(&k); k })
+    }
+}
 
 /// map “which chunk key already has an entity in the world?”
 #[derive(Resource, Default)]

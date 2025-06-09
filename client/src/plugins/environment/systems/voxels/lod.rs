@@ -14,7 +14,7 @@ pub fn update_chunk_lods(
 
     // Borrow the octree only once to avoid repeated query lookups
     let mut tree = tree_q.single_mut();
-    let max_depth = tree.max_depth;
+    let max_depth = tree.max_depth - 1;
     let range_step = cfg.view_distance_chunks as f32 / max_depth as f32;
     let chunk_size = CHUNK_SIZE as f32 * tree.get_spacing_at_depth(max_depth);
 
