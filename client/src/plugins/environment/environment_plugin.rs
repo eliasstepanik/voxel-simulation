@@ -1,6 +1,5 @@
 use bevy::app::{App, Plugin, PreStartup, PreUpdate, Startup};
 use bevy::prelude::*;
-use crate::plugins::environment::systems::voxels::culling::{despawn_distant_chunks};
 use crate::plugins::environment::systems::voxels::debug::{draw_grid, visualize_octree_system};
 use crate::plugins::environment::systems::voxels::queue_systems;
 use crate::plugins::environment::systems::voxels::queue_systems::{enqueue_visible_chunks, process_chunk_queue};
@@ -40,9 +39,8 @@ impl Plugin for EnvironmentPlugin {
                 Update,
                 (
                     /* ---------- culling & streaming ---------- */
-                    despawn_distant_chunks,                       // 1.  remove too-far chunks
-                    enqueue_visible_chunks.after(despawn_distant_chunks),         // 2.  find new visible ones
-                    process_chunk_queue .after(enqueue_visible_chunks),           // 3.  spawn ≤ budget per frame
+                    enqueue_visible_chunks,
+                    process_chunk_queue.after(enqueue_visible_chunks),
                     update_chunk_lods.after(process_chunk_queue),
                     rebuild_dirty_chunks .after(process_chunk_queue),             // 4.  (re)mesh dirty chunks
 
