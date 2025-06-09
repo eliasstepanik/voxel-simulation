@@ -25,6 +25,8 @@ server/*.pdb
 
 server/.spacetime
 
+*.bin
+client/*.bin
 
 
 # RustRover

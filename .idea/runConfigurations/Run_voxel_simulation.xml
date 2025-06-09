@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Run horror-game" type="CargoCommandRunConfiguration" factoryName="Cargo Command" singleton="false">
+  <configuration default="false" name="Run voxel-simulation" type="CargoCommandRunConfiguration" factoryName="Cargo Command" singleton="false">
     <option name="buildProfileId" value="release" />
-    <option name="command" value="run --package horror-game --bin horror-game --features bevy/trace_tracy_memory" />
+    <option name="command" value="run --package voxel-simulation --bin voxel-simulation --features bevy/trace_tracy_memory" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$/client" />
     <envs />
     <option name="emulateTerminal" value="true" />
