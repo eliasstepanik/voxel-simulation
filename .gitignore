@@ -35,5 +35,5 @@ server/.spacetime
 .idea/vcs.xml
 .idea/modules.xml
 .idea/.gitignore
-.idea/horror-game.iml
+.idea/voxel-simulation.iml
 .idea/workspace.xml

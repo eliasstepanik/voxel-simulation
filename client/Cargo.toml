@@ -1,9 +1,9 @@
 [package]
-name = "horror-game"
+name = "voxel-simulation"
 version = "0.1.0"
 edition = "2024"
-description = "Horror-Game"
-repository = "https://github.com/eliasstepanik/horror-game"
+description = "voxel-simulation"
+repository = "https://github.com/eliasstepanik/voxel-simulation"
 license = "MIT OR Apache-2.0"
 build = "build.rs"
 

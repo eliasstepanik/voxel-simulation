@@ -18,7 +18,7 @@ use toml;
 use crate::config::Config;
 use crate::plugins::big_space::big_space_plugin::BigSpaceIntegrationPlugin;
 
-const TITLE: &str = "horror-game";
+const TITLE: &str = "voxel-simulation";
 const RESOLUTION: (f32, f32) = (1920f32, 1080f32);
 const RESIZABLE: bool = true;
 const DECORATIONS: bool = true;
