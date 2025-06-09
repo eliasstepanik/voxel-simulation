@@ -1,4 +1,7 @@
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
+use std::io;
+use bincode;
 use bevy::asset::Assets;
 use bevy::color::Color;
 use bevy::math::{DQuat, DVec3};
@@ -457,8 +460,33 @@ impl SparseVoxelOctree {
 
         None
     }
-    
-    
 
+    /// Save the octree to a file using bincode serialization.
+    pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        let data = bincode::serialize(self)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        std::fs::write(path, data)
+    }
+
+    /// Load an octree from a file and rebuild runtime caches.
+    pub fn load_from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let bytes = std::fs::read(path)?;
+        let mut tree: Self = bincode::deserialize(&bytes)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        tree.rebuild_cache();
+        Ok(tree)
+    }
+
+    /// Rebuild runtime caches like occupied_chunks after loading.
+    pub fn rebuild_cache(&mut self) {
+        self.dirty.clear();
+        self.dirty_chunks.clear();
+        self.occupied_chunks.clear();
+        let voxels = Self::collect_voxels_from_node(&self.root, self.size);
+        for (pos, _voxel, _depth) in voxels {
+            let key = chunk_key_from_world(self, pos);
+            self.occupied_chunks.insert(key);
+        }
+    }
 }
 

@@ -1,11 +1,29 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use bevy::color::Color;
 use bevy::prelude::*;
+use serde::{Serialize, Deserialize, Serializer, Deserializer};
+
+fn serialize_color<S>(color: &Color, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let [r, g, b, a] = color.as_linear_rgba_f32();
+    [r, g, b, a].serialize(serializer)
+}
+
+fn deserialize_color<'de, D>(deserializer: D) -> Result<Color, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let arr: [f32; 4] = Deserialize::deserialize(deserializer)?;
+    Ok(Color::rgba_linear(arr[0], arr[1], arr[2], arr[3]))
+}
 
 
 /// Represents a single voxel with a color.
-#[derive(Debug, Clone, Copy, Component, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, Component, PartialEq, Default, Serialize, Deserialize)]
 pub struct Voxel {
+    #[serde(serialize_with = "serialize_color", deserialize_with = "deserialize_color")]
     pub color: Color,
 }
 
@@ -16,7 +34,7 @@ pub struct DirtyVoxel {
 
 /// Represents a node in the sparse voxel octree.
 
-#[derive(Debug, Component, Clone)]
+#[derive(Debug, Component, Clone, Serialize, Deserialize)]
 pub struct OctreeNode {
     pub children: Option<Box<[OctreeNode; 8]>>,
     pub voxel: Option<Voxel>,
@@ -24,7 +42,7 @@ pub struct OctreeNode {
 }
 /// Represents the root of the sparse voxel octree.
 /// Represents the root of the sparse voxel octree.
-#[derive(Debug, Component)]
+#[derive(Debug, Component, Serialize, Deserialize)]
 pub struct SparseVoxelOctree {
 
     pub root: OctreeNode,
@@ -34,8 +52,11 @@ pub struct SparseVoxelOctree {
     pub show_world_grid: bool,
     pub show_chunks: bool,
 
+    #[serde(skip)]
     pub dirty: Vec<DirtyVoxel>,
+    #[serde(skip)]
     pub dirty_chunks: HashSet<ChunkKey>,
+    #[serde(skip)]
     pub occupied_chunks: HashSet<ChunkKey>,
 }
 
@@ -101,7 +122,7 @@ pub struct Chunk {
 pub struct ChunkLod(pub u32);
 
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChunkKey(pub i32, pub i32, pub i32);
 
 

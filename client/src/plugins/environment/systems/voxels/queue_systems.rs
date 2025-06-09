@@ -24,15 +24,27 @@ pub fn enqueue_visible_chunks(
     prev_cam.0 = Some(centre);
 
     let r = cfg.view_distance_chunks;
-    for key in &tree.occupied_chunks {
-        let dx = key.0 - centre.0;
-        let dy = key.1 - centre.1;
-        let dz = key.2 - centre.2;
-        if dx.abs() > r || dy.abs() > r || dz.abs() > r { continue; }
-        if spawned.0.contains_key(key) { continue; }
-        if queue.set.contains(key) { continue; }
-        queue.keys.push_back(*key);
-        queue.set.insert(*key);
+
+    let mut keys: Vec<(ChunkKey, i32)> = tree
+        .occupied_chunks
+        .iter()
+        .filter_map(|key| {
+            let dx = key.0 - centre.0;
+            let dy = key.1 - centre.1;
+            let dz = key.2 - centre.2;
+            if dx.abs() > r || dy.abs() > r || dz.abs() > r { return None; }
+            if spawned.0.contains_key(key) { return None; }
+            Some((*key, dx*dx + dy*dy + dz*dz))
+        })
+        .collect();
+
+    keys.sort_by_key(|(_, d)| *d);
+
+    queue.keys.clear();
+    queue.set.clear();
+    for (key, _) in keys {
+        queue.keys.push_back(key);
+        queue.set.insert(key);
     }
 }
 
