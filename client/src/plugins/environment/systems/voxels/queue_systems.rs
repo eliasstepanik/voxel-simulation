@@ -10,7 +10,6 @@ pub fn enqueue_visible_chunks(
     mut queue      : ResMut<ChunkQueue>,
     spawned        : Res<SpawnedChunks>,
     mut prev_cam   : ResMut<PrevCameraChunk>,
-    offsets        : Res<ChunkOffsets>,
     cfg            : Res<ChunkCullingCfg>,
     cam_q          : Query<&GlobalTransform, With<Camera>>,
     tree_q         : Query<&SparseVoxelOctree>,
@@ -24,12 +23,16 @@ pub fn enqueue_visible_chunks(
     }
     prev_cam.0 = Some(centre);
 
-    for offset in &offsets.0 {
-        let key = ChunkKey(centre.0 + offset.x, centre.1 + offset.y, centre.2 + offset.z);
-        if spawned.0.contains_key(&key) { continue; }
-        if queue.0.contains(&key)       { continue; }
-        if !tree.occupied_chunks.contains(&key) { continue; }
-        queue.0.push_back(key);
+    let r = cfg.view_distance_chunks;
+    for key in &tree.occupied_chunks {
+        let dx = key.0 - centre.0;
+        let dy = key.1 - centre.1;
+        let dz = key.2 - centre.2;
+        if dx.abs() > r || dy.abs() > r || dz.abs() > r { continue; }
+        if spawned.0.contains_key(key) { continue; }
+        if queue.set.contains(key) { continue; }
+        queue.keys.push_back(*key);
+        queue.set.insert(*key);
     }
 }
 
@@ -41,7 +44,8 @@ pub fn process_chunk_queue(
 ) {
     let mut tree = tree_q.single_mut();
     for _ in 0..budget.per_frame {
-        if let Some(key) = queue.0.pop_front() {
+        if let Some(key) = queue.keys.pop_front() {
+            queue.set.remove(&key);
             tree.dirty_chunks.insert(key);
         } else { break; }
     }

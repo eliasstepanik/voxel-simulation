@@ -310,6 +310,7 @@ pub(crate) fn mesh_chunk(
     // ────────────────────────────────────────────────────────────────────────────
 
     const N: usize = CHUNK_SIZE as usize;
+    const MASK_LEN: usize = N * N;
 
     // Safe voxel query that falls back to the octree for out‑of‑chunk requests.
     let filled = |x: i32, y: i32, z: i32| -> bool {
@@ -327,10 +328,12 @@ pub(crate) fn mesh_chunk(
     // Push a single quad (4 vertices, 6 indices).  `base` is the lower‑left
     // corner in world space; `u`/`v` are the tangent vectors (length 1); `size`
     // is expressed in world units along those axes; `n` is the face normal.
-    let mut positions = Vec::<[f32; 3]>::new();
-    let mut normals   = Vec::<[f32; 3]>::new();
-    let mut uvs       = Vec::<[f32; 2]>::new();
-    let mut indices   = Vec::<u32>::new();
+    // Preallocate vertex buffers for better performance
+    let voxel_count = N * N * N;
+    let mut positions = Vec::<[f32; 3]>::with_capacity(voxel_count * 4);
+    let mut normals   = Vec::<[f32; 3]>::with_capacity(voxel_count * 4);
+    let mut uvs       = Vec::<[f32; 2]>::with_capacity(voxel_count * 4);
+    let mut indices   = Vec::<u32>::with_capacity(voxel_count * 6);
 
     let mut push_quad = |base: Vec3, size: Vec2, n: Vec3, u: Vec3, v: Vec3| {
         let i0 = positions.len() as u32;
@@ -371,8 +374,10 @@ pub(crate) fn mesh_chunk(
         // the 0…N grid lines (inclusive) because the positive‑side faces of the
         // last voxel sit at slice N.
         for slice in 0..=N {
-            // Build the face mask for this slice.
-            let mut mask = vec![false; N * N];
+            // Build the face mask for this slice using a fixed-size array to
+            // avoid heap allocations.
+            let mut mask = [false; MASK_LEN];
+            let mut visited = [false; MASK_LEN];
             let idx = |u: usize, v: usize| -> usize { u * N + v };
 
             for u in 0..N {
@@ -396,7 +401,6 @@ pub(crate) fn mesh_chunk(
             }
 
             // Greedy merge the mask into maximal rectangles.
-            let mut visited = vec![false; N * N];
             for u0 in 0..N {
                 for v0 in 0..N {
                     if !mask[idx(u0, v0)] || visited[idx(u0, v0)] {

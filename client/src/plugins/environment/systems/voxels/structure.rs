@@ -118,7 +118,10 @@ impl Default for ChunkBudget {
 
 /// FIFO queue with chunk keys that still need meshing
 #[derive(Resource, Default)]
-pub struct ChunkQueue(pub VecDeque<ChunkKey>);
+pub struct ChunkQueue {
+    pub keys: VecDeque<ChunkKey>,
+    pub set:  HashSet<ChunkKey>,
+}
 
 /// map “which chunk key already has an entity in the world?”
 #[derive(Resource, Default)]
