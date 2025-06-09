@@ -6,7 +6,27 @@ streaming voxel terrain, high precision coordinates via the
 [big_space](https://crates.io/crates/big_space) crate and various debug
 tools.
 
+## Features
+
+- Streaming voxel terrain with adjustable level of detail
+- High precision world coordinates using [`big_space`](https://crates.io/crates/big_space)
+- Planet generation using noise based deformation
+- Flight-style camera and basic UI
+- Debug helpers for wireframes, world grid and voxel editing
+
 ![Demo screenshot](images/voxel-simulation-demo.png)
+
+## Controls
+
+- **WASD** &ndash; Move horizontally
+- **Space / Shift** &ndash; Ascend/descend
+- **Mouse** &ndash; Look around (press **L** to toggle mouse capture)
+- **Mouse wheel** &ndash; Adjust movement speed
+- **F2** &ndash; Toggle octree wireframe
+- **F3** &ndash; Toggle world grid
+- **Q**  &ndash; Insert a red voxel at the crosshair
+- **F4** &ndash; Save the current octree to `octree.bin`
+- **Escape** &ndash; Quit the application
 
 ## Running
 
