@@ -1,6 +1,9 @@
 use crate::plugins::environment::systems::camera_system::CameraController;
 use bevy::asset::AssetServer;
+use bevy::math::DVec3;
 use bevy::prelude::*;
+
+use big_space::prelude::*;
 
 #[derive(Component)]
 pub struct SpeedDisplay;
@@ -38,25 +41,26 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 ///  - camera f32 position
 ///  - camera global f64 position
 ///  - current chunk coordinate
+
 pub fn update(
-    // Query the camera controller so we can see its speed
-    query_camera_controller: Query<&CameraController>,
-    // We also query for the camera's f32 `Transform` and the double `DoubleTransform`
-    camera_query: Query<(&Transform, &Camera)>,
-
-    // The UI text entity
-    mut query_text: Query<&mut Text, With<SpeedDisplay>>,
+    grids: Grids<'_, '_, i64>,         // helper from big_space
+    // we need the entity id, the cell & the local transform
+    camera_q: Query<(Entity, &GridCell<i64>, &Transform, &CameraController)>,
+    mut ui_q:  Query<&mut Text, With<SpeedDisplay>>,
 ) {
-    let camera_controller = query_camera_controller.single();
-    let (transform, _camera) = camera_query.single();
-    let mut text = query_text.single_mut();
+    let Ok((cam_ent, cell, tf, ctrl)) = camera_q.get_single() else { return };
 
-    // Format the string to show speed, positions, and chunk coords
-    text.0 = format!(
-        "\n  Speed: {:.3}\n  Position(f32): ({:.2},{:.2},{:.2})",
-        camera_controller.speed,
-        transform.translation.x,
-        transform.translation.y,
-        transform.translation.z,
-    );
+    // grid that the camera lives in
+    let Some(grid) = grids.parent_grid(cam_ent) else { return };
+
+    // absolute position in metres (f64)
+    let pos = grid.grid_position_double(cell,tf);
+
+    if let Ok(mut text) = ui_q.get_single_mut() {
+        text.0 = format!(
+            "\n  Speed: {:.3}\n  Position(f64): ({:.2}, {:.2}, {:.2})",
+            ctrl.speed,
+            pos.x, pos.y, pos.z,
+        );
+    }
 }

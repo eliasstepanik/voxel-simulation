@@ -5,6 +5,6 @@ fn main() {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let target_dir = Path::new(&out_dir).ancestors().nth(3).unwrap(); // gets target/debug or release
 
-    fs::copy("config.toml", target_dir.join("config.toml"))
-        .expect("Failed to copy config.toml to target directory");
+    fs::copy("Config.toml", target_dir.join("Config.toml"))
+        .expect("Failed to copy Config.toml to target directory");
 }

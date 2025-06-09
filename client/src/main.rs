@@ -1,21 +1,22 @@
 mod app;
 mod helper;
 mod plugins;
-mod module_bindings;
 mod config;
 
 use std::fs;
 use crate::app::AppPlugin;
 use bevy::gizmos::{AppGizmoBuilder, GizmoPlugin};
 use bevy::log::info;
-use bevy::prelude::{default, App, GizmoConfigGroup, PluginGroup, Reflect, Res, Resource};
+use bevy::prelude::*;
 use bevy::render::settings::{Backends, RenderCreation, WgpuSettings};
 use bevy::render::RenderPlugin;
 use bevy::DefaultPlugins;
-use bevy_egui::EguiPlugin;
-use bevy_window::{PresentMode, Window, WindowPlugin};
+use bevy::input::gamepad::AxisSettingsError::DeadZoneUpperBoundGreaterThanLiveZoneUpperBound;
+use bevy::window::PresentMode;
+use big_space::plugin::BigSpacePlugin;
 use toml;
 use crate::config::Config;
+use crate::plugins::big_space::big_space_plugin::BigSpaceIntegrationPlugin;
 
 const TITLE: &str = "horror-game";
 const RESOLUTION: (f32, f32) = (1920f32, 1080f32);
@@ -34,14 +35,14 @@ fn main() {
 
 
     let mut app = App::new();
-    
+
     app.insert_resource(config);
-    
+
     register_platform_plugins(&mut app);
 
     app.add_plugins(AppPlugin);
-    app.add_plugins(EguiPlugin);
-    
+
+
 
 
     /*app.add_plugins(GizmoPlugin);*/
@@ -76,7 +77,7 @@ fn register_platform_plugins(app: &mut App) {
                         ..default()
                     }),
                     ..default()
-                }),
+                }).build().disable::<TransformPlugin>(),
         );
     }
 
