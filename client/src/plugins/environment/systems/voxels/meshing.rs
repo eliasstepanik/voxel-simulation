@@ -304,7 +304,7 @@ pub(crate) fn mesh_chunk(
     origin: Vec3,
     step:   f32,
     tree:   &SparseVoxelOctree,
-) -> Mesh {
+) -> Option<Mesh> {
     // ────────────────────────────────────────────────────────────────────────────
     // Helpers
     // ────────────────────────────────────────────────────────────────────────────
@@ -462,6 +462,10 @@ pub(crate) fn mesh_chunk(
     // ────────────────────────────────────────────────────────────────────────────
     // Final mesh assembly
     // ────────────────────────────────────────────────────────────────────────────
+    if indices.is_empty() {
+        return None;
+    }
+
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
     mesh.insert_attribute(
         Mesh::ATTRIBUTE_POSITION,
@@ -476,5 +480,5 @@ pub(crate) fn mesh_chunk(
         VertexAttributeValues::Float32x2(uvs),
     );
     mesh.insert_indices(Indices::U32(indices));
-    mesh
+    Some(mesh)
 }

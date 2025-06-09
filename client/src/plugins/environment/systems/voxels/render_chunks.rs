@@ -85,13 +85,22 @@ pub fn rebuild_dirty_chunks(
         for (key, buf, origin, step, lod) in bufs {
             if let Some((ent, mesh_h, _mat_h, _)) = existing.get(&key).cloned() {
                 // update mesh in-place; keeps old asset id
-                if let Some(mesh) = meshes.get_mut(&mesh_h) {
-                    *mesh = mesh_chunk(&buf, origin, step, &tree);
+                match mesh_chunk(&buf, origin, step, &tree) {
+                    Some(new_mesh) => {
+                        if let Some(mesh) = meshes.get_mut(&mesh_h) {
+                            *mesh = new_mesh;
+                        }
+                        spawned.0.insert(key, ent);
+                    }
+                    None => {
+                        meshes.remove(&mesh_h);
+                        commands.entity(ent).despawn_recursive();
+                        spawned.0.remove(&key);
+                    }
                 }
-                spawned.0.insert(key, ent);
-            } else {
-                // spawn brand-new chunk
-                let mesh_h = meshes.add(mesh_chunk(&buf, origin, step, &tree));
+            } else if let Some(mesh) = mesh_chunk(&buf, origin, step, &tree) {
+                // spawn brand-new chunk only if mesh has faces
+                let mesh_h = meshes.add(mesh);
                 let mat_h  = materials.add(StandardMaterial::default());
 
                 commands.entity(root.0).with_children(|p| {
