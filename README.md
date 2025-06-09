@@ -8,6 +8,7 @@ tools.
 
 ## Features
 
+- Load/Save System
 - Streaming voxel terrain with adjustable level of detail
 - High precision world coordinates using [`big_space`](https://crates.io/crates/big_space)
 - Planet generation using noise based deformation
