@@ -9,7 +9,7 @@ build = "build.rs"
 
 
 [dependencies]
-bevy = { version = "0.15.1", features = ["jpeg", "trace_tracy", "trace_tracy_memory"] }
+bevy = { version = "0.15.1", features = ["jpeg", "trace_tracy", "trace_tracy_memory", "serialize"] }
 rand = "0.8.5"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
@@ -21,3 +21,4 @@ smallvec = "1.14.0"
 once_cell = "1.21.3"
 rayon = "1.10.0"
 bincode = "1.3"
+

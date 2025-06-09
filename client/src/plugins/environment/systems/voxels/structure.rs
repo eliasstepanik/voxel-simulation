@@ -7,7 +7,7 @@ fn serialize_color<S>(color: &Color, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    let [r, g, b, a] = color.as_linear_rgba_f32();
+    let [r, g, b, a] = color.to_linear().to_f32_array();
     [r, g, b, a].serialize(serializer)
 }
 
@@ -16,7 +16,7 @@ where
     D: Deserializer<'de>,
 {
     let arr: [f32; 4] = Deserialize::deserialize(deserializer)?;
-    Ok(Color::rgba_linear(arr[0], arr[1], arr[2], arr[3]))
+    Ok(Color::linear_rgba(arr[0], arr[1], arr[2], arr[3]))
 }
 
 
