@@ -43,6 +43,7 @@ impl SparseVoxelOctree {
         self.dirty.push(dirty_voxel);
         let key = chunk_key_from_world(self, position);
         self.dirty_chunks.insert(key);
+        self.mark_neighbor_chunks_dirty(position);
         self.occupied_chunks.insert(key);
 
 
@@ -92,6 +93,7 @@ impl SparseVoxelOctree {
         // mark the chunk
         let key = chunk_key_from_world(self, position);
         self.dirty_chunks.insert(key);
+        self.mark_neighbor_chunks_dirty(position);
 
         Self::remove_recursive(
             &mut self.root,
@@ -109,6 +111,35 @@ impl SparseVoxelOctree {
     pub fn clear_dirty_flags(&mut self) {
         self.dirty.clear();
         self.dirty_chunks.clear();
+    }
+
+    fn mark_neighbor_chunks_dirty(&mut self, position: Vec3) {
+        let key = chunk_key_from_world(self, position);
+        let step = self.get_spacing_at_depth(self.max_depth);
+        let half = self.size * 0.5;
+
+        let gx = ((position.x + half) / step).floor() as i32;
+        let gy = ((position.y + half) / step).floor() as i32;
+        let gz = ((position.z + half) / step).floor() as i32;
+
+        let lx = gx - key.0 * CHUNK_SIZE;
+        let ly = gy - key.1 * CHUNK_SIZE;
+        let lz = gz - key.2 * CHUNK_SIZE;
+
+        let mut neighbors = [
+            (lx == 0, ChunkKey(key.0 - 1, key.1, key.2)),
+            (lx == CHUNK_SIZE - 1, ChunkKey(key.0 + 1, key.1, key.2)),
+            (ly == 0, ChunkKey(key.0, key.1 - 1, key.2)),
+            (ly == CHUNK_SIZE - 1, ChunkKey(key.0, key.1 + 1, key.2)),
+            (lz == 0, ChunkKey(key.0, key.1, key.2 - 1)),
+            (lz == CHUNK_SIZE - 1, ChunkKey(key.0, key.1, key.2 + 1)),
+        ];
+
+        for (cond, n) in neighbors.iter() {
+            if *cond && self.occupied_chunks.contains(n) {
+                self.dirty_chunks.insert(*n);
+            }
+        }
     }
 
     fn remove_recursive(
