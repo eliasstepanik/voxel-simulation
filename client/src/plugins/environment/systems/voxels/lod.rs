@@ -34,5 +34,6 @@ pub fn update_chunk_lods(
 
     for key in changed {
         tree.dirty_chunks.insert(key);
+        tree.mark_neighbors_dirty_from_key(key);
     }
 }

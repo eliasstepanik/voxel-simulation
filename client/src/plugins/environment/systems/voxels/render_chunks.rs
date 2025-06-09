@@ -97,6 +97,7 @@ pub fn rebuild_dirty_chunks(
                         meshes.remove(&mesh_h);
                         commands.entity(ent).despawn_recursive();
                         spawned.0.remove(&key);
+                        tree.mark_neighbors_dirty_from_key(key);
                     }
                 }
             } else if let Some(mesh) = mesh_chunk(&buf, origin, step, &tree) {
