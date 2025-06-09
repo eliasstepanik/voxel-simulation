@@ -91,6 +91,7 @@ pub fn rebuild_dirty_chunks(
                             *mesh = new_mesh;
                         }
                         spawned.0.insert(key, ent);
+                        tree.mark_neighbors_dirty_from_key(key);
                     }
                     None => {
                         meshes.remove(&mesh_h);
@@ -117,6 +118,7 @@ pub fn rebuild_dirty_chunks(
                         .id();
                     spawned.0.insert(key, e);
                 });
+                tree.mark_neighbors_dirty_from_key(key);
             }
         }
 
