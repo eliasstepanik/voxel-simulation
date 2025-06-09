@@ -31,13 +31,14 @@ pub fn rebuild_dirty_chunks(
             .collect();
 
     for mut tree in &mut octrees {
-        if tree.dirty_chunks.is_empty() {
+        let dirty_keys: Vec<ChunkKey> = tree.dirty_chunks.drain().collect();
+        if dirty_keys.is_empty() {
             continue;
         }
 
         //------------------------------------------------ collect voxel data
         let mut bufs = Vec::new();
-        for key in tree.dirty_chunks.iter().copied() {
+        for key in dirty_keys.iter().copied() {
             let lod = existing.get(&key).map(|v| v.3).unwrap_or(0);
             let mut buf =
                 [[[None; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize];
@@ -123,6 +124,6 @@ pub fn rebuild_dirty_chunks(
             }
         }
 
-        tree.clear_dirty_flags();
+        tree.dirty.clear();
     }
 }
