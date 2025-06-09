@@ -117,7 +117,10 @@ impl Default for ChunkBudget {
 }
 
 /// FIFO queue with chunk keys that still need meshing
-#[derive(Resource,Default)]
+pub struct ChunkQueue {
+    pub keys: VecDeque<ChunkKey>,
+    pub set:  HashSet<ChunkKey>,
+}
 pub struct ChunkQueue {
     order:     VecDeque<ChunkKey>, // keeps first-in-first-out order
     in_queue:  HashSet<ChunkKey>,  // O(1) membership test

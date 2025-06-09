@@ -5,14 +5,18 @@ use crate::plugins::environment::systems::voxels::structure::*;
 
 
 
-
-/// enqueue chunks that *should* be visible but are not yet spawned
-/// enqueue chunks that *should* be visible but are not yet spawned
-pub fn enqueue_visible_chunks(
-    mut queue    : ResMut<ChunkQueue>,
-    spawned      : Res<SpawnedChunks>,
-    mut prev_cam : ResMut<PrevCameraChunk>,
-    offsets      : Res<ChunkOffsets>,
+    let r = cfg.view_distance_chunks;
+    for key in &tree.occupied_chunks {
+        let dx = key.0 - centre.0;
+        let dy = key.1 - centre.1;
+        let dz = key.2 - centre.2;
+        if dx.abs() > r || dy.abs() > r || dz.abs() > r { continue; }
+        if spawned.0.contains_key(key) { continue; }
+        if queue.set.contains(key) { continue; }
+        queue.keys.push_back(*key);
+        queue.set.insert(*key);
+        if let Some(key) = queue.keys.pop_front() {
+            queue.set.remove(&key);
     cam_q        : Query<&GlobalTransform, With<Camera>>,
     tree_q       : Query<&SparseVoxelOctree>,
 ) {
