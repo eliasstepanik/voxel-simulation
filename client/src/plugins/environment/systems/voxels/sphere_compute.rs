@@ -1,7 +1,10 @@
+use super::structure::{SparseVoxelOctree, Voxel};
 use bevy::prelude::*;
 use bevy_easy_compute::prelude::*;
 use bytemuck::{Pod, Zeroable};
-use super::structure::{SparseVoxelOctree, Voxel};
+
+const SPHERE_RADIUS: u32 = 200;
+const SPHERE_DIAMETER: u32 = SPHERE_RADIUS * 2 + 1;
 
 #[repr(C)]
 #[derive(ShaderType, Clone, Copy, Pod, Zeroable)]
@@ -24,19 +27,23 @@ pub struct SphereWorker;
 
 impl ComputeWorker for SphereWorker {
     fn build(world: &mut World) -> AppComputeWorker<Self> {
-        let radius = 200u32;
-        let diameter = radius * 2 + 1;
-        let params = SphereParams { radius, diameter };
-        let buffer = vec![0u32; (diameter * diameter * diameter) as usize];
+        let params = SphereParams {
+            radius: SPHERE_RADIUS,
+            diameter: SPHERE_DIAMETER,
+        };
+        let buffer = vec![0u32; (SPHERE_DIAMETER * SPHERE_DIAMETER * SPHERE_DIAMETER) as usize];
 
         AppComputeWorkerBuilder::new(world)
             .add_uniform("params", &params)
             .add_staging("voxels", &buffer)
-            .add_pass::<SphereShader>([
-                (diameter + 7) / 8,
-                (diameter + 7) / 8,
-                (diameter + 7) / 8,
-            ], &["params", "voxels"])
+            .add_pass::<SphereShader>(
+                [
+                    (SPHERE_DIAMETER + 7) / 8,
+                    (SPHERE_DIAMETER + 7) / 8,
+                    (SPHERE_DIAMETER + 7) / 8,
+                ],
+                &["params", "voxels"],
+            )
             .synchronous()
             .one_shot()
             .build()
@@ -66,12 +73,11 @@ pub fn apply_sphere_result(
         return;
     }
 
-    let params: SphereParams = worker.read("params");
     let voxels: Vec<u32> = worker.read_vec("voxels");
     let mut octree = octree_q.single_mut();
     let step = octree.get_spacing_at_depth(octree.max_depth);
-    let radius = params.radius as i32;
-    let diameter = params.diameter as i32;
+    let radius = SPHERE_RADIUS as i32;
+    let diameter = SPHERE_DIAMETER as i32;
     for x in 0..diameter {
         for y in 0..diameter {
             for z in 0..diameter {
@@ -80,11 +86,15 @@ pub fn apply_sphere_result(
                     let wx = (x - radius) as f32 * step;
                     let wy = (y - radius) as f32 * step;
                     let wz = (z - radius) as f32 * step;
-                    octree.insert(Vec3::new(wx, wy, wz), Voxel { color: Color::rgb(0.2, 0.8, 0.2) });
+                    octree.insert(
+                        Vec3::new(wx, wy, wz),
+                        Voxel {
+                            color: Color::rgb(0.2, 0.8, 0.2),
+                        },
+                    );
                 }
             }
         }
     }
     generated.0 = false;
 }
-
