@@ -32,6 +32,7 @@ impl Plugin for EnvironmentPlugin {
             // ------------------------------------------------------------------------
             .init_resource::<ChunkQueue>()
             .init_resource::<SpawnedChunks>()
+            .init_resource::<crate::plugins::environment::systems::voxels::gpu_meshing::GpuMesher>()
             // ------------------------------------------------------------------------
             // frame update
             // ------------------------------------------------------------------------

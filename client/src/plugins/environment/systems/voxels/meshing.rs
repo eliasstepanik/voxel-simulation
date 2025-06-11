@@ -482,3 +482,16 @@ pub(crate) fn mesh_chunk(
     mesh.insert_indices(Indices::U32(indices));
     Some(mesh)
 }
+
+/// Mesh a chunk using a precomputed face visibility mask. Currently this
+/// simply calls [`mesh_chunk`] and ignores the mask, serving as a placeholder
+/// for future GPU-driven meshing.
+pub(crate) fn mesh_chunk_with_mask(
+    buffer: &[[[Option<Voxel>; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize],
+    _face_mask: &[u32],
+    origin: Vec3,
+    step: f32,
+    tree: &SparseVoxelOctree,
+) -> Option<Mesh> {
+    mesh_chunk(buffer, origin, step, tree)
+}

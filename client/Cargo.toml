@@ -22,4 +22,5 @@ once_cell = "1.21.3"
 rayon = "1.10.0"
 bincode = "1.3"
 bytemuck = "1.14"
+crossbeam-channel = "0.5"
 

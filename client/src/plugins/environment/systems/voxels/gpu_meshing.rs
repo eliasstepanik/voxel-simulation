@@ -3,6 +3,8 @@ use bevy::render::render_resource::*;
 use bevy::render::render_resource::ComputePipelineDescriptor as RawComputePipelineDescriptor;
 use bevy::render::renderer::RenderDevice;
 use bevy::render::renderer::RenderQueue;
+use bevy::render::render_resource::Maintain;
+use crossbeam_channel::bounded;
 
 
 pub struct GpuMesher {
@@ -75,8 +77,14 @@ impl GpuMesher {
         device: &RenderDevice,
         queue: &RenderQueue,
         voxels: &[u32],
-        output: &Buffer,
-    ) {
+    ) -> Vec<u32> {
+        let output_size = (voxels.len() * std::mem::size_of::<u32>()) as u64;
+        let output = device.create_buffer(&BufferDescriptor {
+            label: Some("face mask buffer"),
+            size: output_size,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
         let voxel_buffer = device.create_buffer_with_data(&BufferInitDescriptor {
             label: Some("voxel buffer"),
             contents: bytemuck::cast_slice(voxels),
@@ -104,5 +112,14 @@ impl GpuMesher {
             cpass.dispatch_workgroups(workgroups, 1, 1);
         }
         queue.submit(Some(encoder.finish()));
+
+        let buffer_slice = output.slice(..);
+        let (s, r) = bounded(1);
+        buffer_slice.map_async(MapMode::Read, move |res| { let _ = s.send(res); });
+        device.poll(Maintain::Wait);
+        let _ = r.recv();
+        let data = buffer_slice.get_mapped_range().to_vec();
+        output.unmap();
+        bytemuck::cast_slice(&data).to_vec()
     }
 }

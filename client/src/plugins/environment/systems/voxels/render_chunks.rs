@@ -1,12 +1,13 @@
 use std::collections::HashMap;
-use std::fmt::format;
 use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
 use bevy::render::mesh::Mesh;
 use big_space::prelude::GridCell;
 use itertools::Itertools;
 use crate::plugins::big_space::big_space_plugin::RootGrid;
-use crate::plugins::environment::systems::voxels::meshing::mesh_chunk;
+use crate::plugins::environment::systems::voxels::meshing::{mesh_chunk, mesh_chunk_with_mask};
+use crate::plugins::environment::systems::voxels::gpu_meshing::GpuMesher;
+use bevy::render::renderer::{RenderDevice, RenderQueue};
 use crate::plugins::environment::systems::voxels::structure::*;
 
 /// rebuilds meshes only for chunks flagged dirty by the octree
@@ -22,6 +23,9 @@ pub fn rebuild_dirty_chunks(
                           &ChunkLod)>,
     mut spawned  : ResMut<SpawnedChunks>,
     root         : Res<RootGrid>,
+    mesher       : Res<GpuMesher>,
+    render_device: Res<RenderDevice>,
+    render_queue : Res<RenderQueue>,
 ) {
     // map ChunkKey → (entity, mesh-handle, material-handle)
     let existing: HashMap<ChunkKey, (Entity, Handle<Mesh>, Handle<StandardMaterial>, u32)> =
@@ -83,9 +87,22 @@ pub fn rebuild_dirty_chunks(
 
         //------------------------------------------------ create / update
         for (key, buf, origin, step, lod) in bufs {
+            const N: usize = CHUNK_SIZE as usize;
+            let index = |x: usize, y: usize, z: usize| -> usize { x + y * N + z * N * N };
+            let mut occ = vec![0u32; N * N * N];
+            for x in 0..N {
+                for y in 0..N {
+                    for z in 0..N {
+                        if buf[x][y][z].is_some() {
+                            occ[index(x, y, z)] = 1;
+                        }
+                    }
+                }
+            }
+            let mask = mesher.compute_face_mask(&render_device, &render_queue, &occ);
             if let Some((ent, mesh_h, _mat_h, _)) = existing.get(&key).cloned() {
                 // update mesh in-place; keeps old asset id
-                match mesh_chunk(&buf, origin, step, &tree) {
+                match mesh_chunk_with_mask(&buf, &mask, origin, step, &tree) {
                     Some(new_mesh) => {
                         if let Some(mesh) = meshes.get_mut(&mesh_h) {
                             *mesh = new_mesh;
@@ -98,7 +115,7 @@ pub fn rebuild_dirty_chunks(
                         spawned.0.remove(&key);
                     }
                 }
-            } else if let Some(mesh) = mesh_chunk(&buf, origin, step, &tree) {
+            } else if let Some(mesh) = mesh_chunk_with_mask(&buf, &mask, origin, step, &tree) {
                 // spawn brand-new chunk only if mesh has faces
                 let mesh_h = meshes.add(mesh);
                 let mat_h  = materials.add(StandardMaterial::default());
