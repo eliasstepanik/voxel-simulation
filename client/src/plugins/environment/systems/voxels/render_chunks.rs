@@ -101,13 +101,8 @@ pub fn rebuild_dirty_chunks(
                 }
             }
             let (mask, counts) = mesher.compute_face_mask(&render_device, &render_queue, &occ);
-            let mut prefix = vec![0u32; counts.len()];
-            let mut running = 0u32;
-            for (i, c) in counts.iter().enumerate() {
-                prefix[i] = running;
-                running += *c;
-            }
-            let vertex_count = running as usize * 6;
+            let (prefix, face_total) = mesher.build_prefix(&render_device, &render_queue, &counts);
+            let vertex_count = face_total as usize * 6;
             let (positions, normals) = mesher.generate_mesh(
                 &render_device,
                 &render_queue,

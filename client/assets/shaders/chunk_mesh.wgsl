@@ -1,26 +1,29 @@
 // Voxel occupancy input
-[[group(0), binding(0)]]
+@group(0) @binding(0)
 var<storage, read> voxels: array<u32>;
 
 // Outputs for the `count_faces` entry point
-[[group(0), binding(1)]]
+@group(0) @binding(1)
 var<storage, read_write> face_mask: array<u32>;
-[[group(0), binding(2)]]
+@group(0) @binding(2)
 var<storage, read_write> face_count: array<u32>;
 
 // Buffers for the `generate_mesh` entry point
-[[group(0), binding(3)]]
+@group(0) @binding(3)
 var<storage, read> prefix: array<u32>;
-[[group(0), binding(4)]]
+@group(0) @binding(4)
 var<storage, read_write> positions: array<vec3<f32>>;
-[[group(0), binding(5)]]
+@group(0) @binding(5)
 var<storage, read_write> normals: array<vec3<f32>>;
+
+@group(0) @binding(7)
+var<storage, read_write> face_total: array<u32>;
 
 struct Params {
     origin: vec3<f32>,
     step: f32,
 };
-[[group(0), binding(6)]]
+@group(0) @binding(6)
 var<uniform> params: Params;
 
 fn push_face(idx: ptr<function, u32>,
@@ -41,6 +44,22 @@ fn push_face(idx: ptr<function, u32>,
     *idx = *idx + 6u;
 }
 
+// -----------------------------------------------------------------------------
+// Prefix sum of face counts (sequential on GPU)
+// -----------------------------------------------------------------------------
+@compute @workgroup_size(1)
+fn build_prefix(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x != 0u) {
+        return;
+    }
+    var sum: u32 = 0u;
+    for (var i: u32 = 0u; i < arrayLength(&face_count); i = i + 1u) {
+        prefix[i] = sum;
+        sum = sum + face_count[i];
+    }
+    face_total[0] = sum;
+}
+
 const CHUNK_SIZE: u32 = 16u;
 
 fn index(x: u32, y: u32, z: u32) -> u32 {
@@ -50,8 +69,8 @@ fn index(x: u32, y: u32, z: u32) -> u32 {
 // -----------------------------------------------------------------------------
 // Count visible faces for each voxel
 // -----------------------------------------------------------------------------
-[[stage(compute), workgroup_size(64)]]
-fn count_faces([[builtin(global_invocation_id)]] gid: vec3<u32>) {
+@compute @workgroup_size(64)
+fn count_faces(@builtin(global_invocation_id) gid: vec3<u32>) {
     let id = gid.x;
     if (id >= arrayLength(&voxels)) {
         return;
@@ -98,8 +117,8 @@ fn count_faces([[builtin(global_invocation_id)]] gid: vec3<u32>) {
 // -----------------------------------------------------------------------------
 // Generate triangle vertices for each visible face
 // -----------------------------------------------------------------------------
-[[stage(compute), workgroup_size(64)]]
-fn generate_mesh([[builtin(global_invocation_id)]] gid: vec3<u32>) {
+@compute @workgroup_size(64)
+fn generate_mesh(@builtin(global_invocation_id) gid: vec3<u32>) {
     let id = gid.x;
     if (id >= arrayLength(&voxels)) {
         return;

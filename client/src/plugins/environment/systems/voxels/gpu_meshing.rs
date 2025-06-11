@@ -8,8 +8,10 @@ use crossbeam_channel::bounded;
 
 pub struct GpuMesher {
     mask_pipeline: ComputePipeline,
+    prefix_pipeline: ComputePipeline,
     mesh_pipeline: ComputePipeline,
     mask_layout: BindGroupLayout,
+    prefix_layout: BindGroupLayout,
     mesh_layout: BindGroupLayout,
 }
 
@@ -26,6 +28,42 @@ impl FromWorld for GpuMesher {
         // Layout for face counting
         let mask_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("chunk mask layout"),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::COMPUTE,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::COMPUTE,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStages::COMPUTE,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        // Layout for prefix computation
+        let prefix_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("chunk prefix layout"),
             entries: &[
                 BindGroupLayoutEntry {
                     binding: 0,
@@ -149,6 +187,22 @@ impl FromWorld for GpuMesher {
             cache: None,
         });
 
+        let prefix_pipeline_layout =
+            render_device.create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Some("prefix pipeline layout"),
+                bind_group_layouts: &[&prefix_layout],
+                push_constant_ranges: &[],
+            });
+
+        let prefix_pipeline = render_device.create_compute_pipeline(&RawComputePipelineDescriptor {
+            label: Some("prefix pipeline"),
+            layout: Some(&prefix_pipeline_layout),
+            module: &shader_module,
+            entry_point: Some("build_prefix"),
+            compilation_options: PipelineCompilationOptions::default(),
+            cache: None,
+        });
+
         let mesh_pipeline_layout =
             render_device.create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: Some("mesh pipeline layout"),
@@ -167,8 +221,10 @@ impl FromWorld for GpuMesher {
 
         Self {
             mask_pipeline,
+            prefix_pipeline,
             mesh_pipeline,
             mask_layout,
+            prefix_layout,
             mesh_layout,
         }
     }
@@ -256,6 +312,70 @@ impl GpuMesher {
             bytemuck::cast_slice(&data_mask).to_vec(),
             bytemuck::cast_slice(&data_count).to_vec(),
         )
+    }
+
+    /// Compute prefix sums of face counts on the GPU. Returns the prefix array
+    /// and the total count of visible faces.
+    pub fn build_prefix(
+        &self,
+        device: &RenderDevice,
+        queue: &RenderQueue,
+        counts: &[u32],
+    ) -> (Vec<u32>, u32) {
+        let size = (counts.len() * std::mem::size_of::<u32>()) as u64;
+        let count_buffer = device.create_buffer_with_data(&BufferInitDescriptor {
+            label: Some("count buffer"),
+            contents: bytemuck::cast_slice(counts),
+            usage: BufferUsages::STORAGE,
+        });
+        let prefix_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("prefix buffer"),
+            size,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let total_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("total buffer"),
+            size: std::mem::size_of::<u32>() as u64,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("prefix bind group"),
+            layout: &self.prefix_layout,
+            entries: &[
+                BindGroupEntry { binding: 0, resource: count_buffer.as_entire_binding() },
+                BindGroupEntry { binding: 1, resource: prefix_buffer.as_entire_binding() },
+                BindGroupEntry { binding: 2, resource: total_buffer.as_entire_binding() },
+            ],
+        });
+
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("prefix encoder") });
+        {
+            let mut cpass = encoder.begin_compute_pass(&ComputePassDescriptor { label: Some("prefix pass"), timestamp_writes: None });
+            cpass.set_pipeline(&self.prefix_pipeline);
+            cpass.set_bind_group(0, &bind_group, &[]);
+            cpass.dispatch_workgroups(1, 1, 1);
+        }
+        queue.submit(Some(encoder.finish()));
+
+        let slice_p = prefix_buffer.slice(..);
+        let slice_t = total_buffer.slice(..);
+        let (s1, r1) = bounded(1);
+        slice_p.map_async(MapMode::Read, move |res| { let _ = s1.send(res); });
+        let (s2, r2) = bounded(1);
+        slice_t.map_async(MapMode::Read, move |res| { let _ = s2.send(res); });
+        device.poll(Maintain::Wait);
+        let _ = r1.recv();
+        let _ = r2.recv();
+        let data_prefix = slice_p.get_mapped_range().to_vec();
+        let data_total = slice_t.get_mapped_range().to_vec();
+        prefix_buffer.unmap();
+        total_buffer.unmap();
+
+        let total = bytemuck::cast_slice::<u8, u32>(&data_total)[0];
+        (bytemuck::cast_slice(&data_prefix).to_vec(), total)
     }
 
     /// Generate vertex positions and normals for visible faces using the GPU.
