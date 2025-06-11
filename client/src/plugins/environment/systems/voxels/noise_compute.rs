@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_easy_compute::prelude::*;
 
+#[repr(C)]
 #[derive(ShaderType, Clone, Copy)]
 pub struct NoiseParams {
     pub frequency: f32,
