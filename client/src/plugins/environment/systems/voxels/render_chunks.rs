@@ -1,10 +1,10 @@
 use crate::plugins::big_space::big_space_plugin::RootGrid;
 use crate::plugins::environment::systems::voxels::gpu_meshing::GpuMesher;
-use crate::plugins::environment::systems::voxels::meshing::{mesh_chunk, mesh_chunk_with_mask};
+use crate::plugins::environment::systems::voxels::meshing::mesh_chunk;
 use crate::plugins::environment::systems::voxels::structure::*;
 use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
-use bevy::render::mesh::Mesh;
+use bevy::render::mesh::{Indices, Mesh, PrimitiveTopology, VertexAttributeValues};
 use bevy::render::renderer::{RenderDevice, RenderQueue};
 use big_space::prelude::GridCell;
 use itertools::Itertools;
@@ -101,25 +101,55 @@ pub fn rebuild_dirty_chunks(
                 }
             }
             let (mask, counts) = mesher.compute_face_mask(&render_device, &render_queue, &occ);
+            let mut prefix = vec![0u32; counts.len()];
+            let mut running = 0u32;
+            for (i, c) in counts.iter().enumerate() {
+                prefix[i] = running;
+                running += *c;
+            }
+            let vertex_count = running as usize * 6;
+            let (positions, normals) = mesher.generate_mesh(
+                &render_device,
+                &render_queue,
+                &occ,
+                &mask,
+                &prefix,
+                vertex_count,
+                origin,
+                step,
+            );
+            let mut mesh = Mesh::new(
+                PrimitiveTopology::TriangleList,
+                RenderAssetUsages::default(),
+            );
+            if vertex_count == 0 {
+                mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, Vec::<[f32; 3]>::new());
+                mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, Vec::<[f32; 3]>::new());
+                mesh.insert_indices(Indices::U32(Vec::new()));
+            } else {
+                mesh.insert_attribute(
+                    Mesh::ATTRIBUTE_POSITION,
+                    VertexAttributeValues::Float32x3(positions),
+                );
+                mesh.insert_attribute(
+                    Mesh::ATTRIBUTE_NORMAL,
+                    VertexAttributeValues::Float32x3(normals),
+                );
+                mesh.insert_indices(Indices::U32((0..vertex_count as u32).collect()));
+            }
+
             if let Some((ent, mesh_h, _mat_h, _)) = existing.get(&key).cloned() {
-                // update mesh in-place; keeps old asset id
-                match mesh_chunk_with_mask(&buf, &mask, &counts, origin, step, &tree) {
-                    Some(new_mesh) => {
-                        if let Some(mesh) = meshes.get_mut(&mesh_h) {
-                            *mesh = new_mesh;
-                        }
-                        spawned.0.insert(key, ent);
+                if vertex_count > 0 {
+                    if let Some(mesh_asset) = meshes.get_mut(&mesh_h) {
+                        *mesh_asset = mesh;
                     }
-                    None => {
-                        meshes.remove(&mesh_h);
-                        commands.entity(ent).despawn_recursive();
-                        spawned.0.remove(&key);
-                    }
+                    spawned.0.insert(key, ent);
+                } else {
+                    meshes.remove(&mesh_h);
+                    commands.entity(ent).despawn_recursive();
+                    spawned.0.remove(&key);
                 }
-            } else if let Some(mesh) =
-                mesh_chunk_with_mask(&buf, &mask, &counts, origin, step, &tree)
-            {
-                // spawn brand-new chunk only if mesh has faces
+            } else if vertex_count > 0 {
                 let mesh_h = meshes.add(mesh);
                 let mat_h = materials.add(StandardMaterial::default());
 
