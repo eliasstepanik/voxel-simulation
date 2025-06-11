@@ -99,7 +99,7 @@ pub fn rebuild_dirty_chunks(
                     }
                 }
             }
-            let mask = mesher.compute_face_mask(&render_device, &render_queue, &occ);
+            let (mask, _counts) = mesher.compute_face_mask(&render_device, &render_queue, &occ);
             if let Some((ent, mesh_h, _mat_h, _)) = existing.get(&key).cloned() {
                 // update mesh in-place; keeps old asset id
                 match mesh_chunk_with_mask(&buf, &mask, origin, step, &tree) {

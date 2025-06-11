@@ -2,6 +2,8 @@
 var<storage, read> voxels: array<u32>;
 [[group(0), binding(1)]]
 var<storage, read_write> face_mask: array<u32>;
+[[group(0), binding(2)]]
+var<storage, read_write> face_count: array<u32>;
 
 const CHUNK_SIZE: u32 = 16u;
 
@@ -20,6 +22,7 @@ fn main([[builtin(global_invocation_id)]] gid: vec3<u32>) {
     let z = id / (CHUNK_SIZE * CHUNK_SIZE);
     if (voxels[id] == 0u) {
         face_mask[id] = 0u;
+        face_count[id] = 0u;
         return;
     }
 
@@ -50,4 +53,5 @@ fn main([[builtin(global_invocation_id)]] gid: vec3<u32>) {
     }
 
     face_mask[id] = mask;
+    face_count[id] = countOneBits(mask);
 }

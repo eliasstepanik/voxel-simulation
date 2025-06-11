@@ -45,6 +45,16 @@ impl FromWorld for GpuMesher {
                     },
                     count: None,
                 },
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStages::COMPUTE,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -77,10 +87,16 @@ impl GpuMesher {
         device: &RenderDevice,
         queue: &RenderQueue,
         voxels: &[u32],
-    ) -> Vec<u32> {
+    ) -> (Vec<u32>, Vec<u32>) {
         let output_size = (voxels.len() * std::mem::size_of::<u32>()) as u64;
         let output = device.create_buffer(&BufferDescriptor {
             label: Some("face mask buffer"),
+            size: output_size,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+        let count_output = device.create_buffer(&BufferDescriptor {
+            label: Some("face count buffer"),
             size: output_size,
             usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::MAP_READ,
             mapped_at_creation: false,
@@ -97,6 +113,7 @@ impl GpuMesher {
             entries: &[
                 BindGroupEntry { binding: 0, resource: voxel_buffer.as_entire_binding() },
                 BindGroupEntry { binding: 1, resource: output.as_entire_binding() },
+                BindGroupEntry { binding: 2, resource: count_output.as_entire_binding() },
             ],
         });
 
@@ -114,12 +131,21 @@ impl GpuMesher {
         queue.submit(Some(encoder.finish()));
 
         let buffer_slice = output.slice(..);
+        let count_slice = count_output.slice(..);
         let (s, r) = bounded(1);
         buffer_slice.map_async(MapMode::Read, move |res| { let _ = s.send(res); });
+        let (s2, r2) = bounded(1);
+        count_slice.map_async(MapMode::Read, move |res| { let _ = s2.send(res); });
         device.poll(Maintain::Wait);
         let _ = r.recv();
-        let data = buffer_slice.get_mapped_range().to_vec();
+        let _ = r2.recv();
+        let data_mask = buffer_slice.get_mapped_range().to_vec();
+        let data_count = count_slice.get_mapped_range().to_vec();
         output.unmap();
-        bytemuck::cast_slice(&data).to_vec()
+        count_output.unmap();
+        (
+            bytemuck::cast_slice(&data_mask).to_vec(),
+            bytemuck::cast_slice(&data_count).to_vec(),
+        )
     }
 }
