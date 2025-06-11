@@ -5,17 +5,18 @@ use bevy::render::renderer::RenderQueue;
 
 
 pub struct GpuMesher {
-    pipeline: CachedComputePipelineId,
+    pipeline: ComputePipeline,
     bind_group_layout: BindGroupLayout,
 }
 
 impl FromWorld for GpuMesher {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
-        let shader = Shader::from_wgsl(include_str!("../../../../../assets/shaders/chunk_mesh.wgsl"));
         let shader_module = render_device.create_shader_module(ShaderModuleDescriptor {
             label: Some("chunk mesh shader"),
-            source: ShaderSource::Wgsl(shader.to_string().into()),
+            source: ShaderSource::Wgsl(
+                include_str!("../../../../../assets/shaders/chunk_mesh.wgsl").into(),
+            ),
         });
 
         let bind_group_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -58,7 +59,7 @@ impl FromWorld for GpuMesher {
         });
 
         Self {
-            pipeline: pipeline.into(),
+            pipeline,
             bind_group_layout,
         }
     }
