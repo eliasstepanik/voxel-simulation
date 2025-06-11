@@ -47,7 +47,7 @@ pub fn setup(
             generate_voxel_sphere_parallel(&mut tree, center, radius, color);
         }*/
         
-        generate_voxel_sphere(&mut tree, 200, color);
+        // voxel sphere is generated asynchronously via compute shader
         tree
     };
 

@@ -1,5 +1,7 @@
 use bevy::app::{App, Plugin, PreStartup, PreUpdate, Startup};
 use bevy::prelude::*;
+use bevy_easy_compute::prelude::*;
+use crate::plugins::environment::systems::voxels::sphere_compute::{SphereWorker, SphereParams, SphereGenerated, execute_sphere_once, apply_sphere_result};
 use crate::plugins::environment::systems::voxels::debug::{draw_grid, visualize_octree_system};
 use crate::plugins::environment::systems::voxels::queue_systems;
 use crate::plugins::environment::systems::voxels::queue_systems::{enqueue_visible_chunks, process_chunk_queue};
@@ -16,8 +18,8 @@ impl Plugin for EnvironmentPlugin {
             (
                 crate::plugins::environment::systems::camera_system::setup,
                 crate::plugins::environment::systems::environment_system::setup.after(crate::plugins::environment::systems::camera_system::setup),
-                crate::plugins::environment::systems::voxel_system::setup
-
+                crate::plugins::environment::systems::voxel_system::setup,
+                execute_sphere_once.after(crate::plugins::environment::systems::voxel_system::setup),
             ),
         );
 
@@ -25,6 +27,7 @@ impl Plugin for EnvironmentPlugin {
         app.insert_resource(ChunkCullingCfg { view_distance_chunks });
         app.insert_resource(ChunkBudget { per_frame: 20 });
         app.init_resource::<PrevCameraChunk>();
+        app.init_resource::<SphereGenerated>();
         app.add_systems(Update, log_mesh_count);
         app
             // ------------------------------------------------------------------------
@@ -42,7 +45,8 @@ impl Plugin for EnvironmentPlugin {
                     enqueue_visible_chunks,
                     process_chunk_queue.after(enqueue_visible_chunks),
                     update_chunk_lods.after(process_chunk_queue),
-                    rebuild_dirty_chunks .after(process_chunk_queue),             // 4.  (re)mesh dirty chunks
+                    rebuild_dirty_chunks .after(process_chunk_queue),
+                    apply_sphere_result.after(rebuild_dirty_chunks),             // 4.  (re)mesh dirty chunks
 
                     /* ---------- optional debug drawing ------- */
                     visualize_octree_system
