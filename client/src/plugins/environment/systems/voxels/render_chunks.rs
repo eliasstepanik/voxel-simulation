@@ -2,8 +2,9 @@ use std::collections::HashMap;
 use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
 use bevy::render::mesh::{
-    Mesh, PrimitiveTopology, Indices, VertexAttributeValues, RenderAssetUsages,
+    Mesh, PrimitiveTopology, Indices, VertexAttributeValues,
 };
+use bevy::asset::RenderAssetUsages;
 use big_space::prelude::GridCell;
 use crate::plugins::big_space::big_space_plugin::RootGrid;
 use crate::plugins::environment::systems::voxels::chunk_mesh_compute::{
