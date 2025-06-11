@@ -12,3 +12,4 @@ pub mod lod;
 pub mod noise_compute;
 pub mod sphere_compute;
 pub mod visible_chunks_compute;
+pub mod chunk_mesh_compute;
