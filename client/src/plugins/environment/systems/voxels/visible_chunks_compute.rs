@@ -23,7 +23,7 @@ pub struct VisibleParams {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Pod, Zeroable, ShaderType)]
 pub struct ChunkResult {
     pub key: IVec3Pod,
     pub dist2: i32,
