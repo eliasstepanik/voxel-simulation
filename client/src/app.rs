@@ -4,6 +4,7 @@ use bevy_easy_compute::prelude::{AppComputePlugin, AppComputeWorkerPlugin};
 use crate::plugins::environment::systems::voxels::sphere_compute::SphereWorker;
 use crate::plugins::environment::systems::voxels::visible_chunks_compute::VisibleChunksWorker;
 use crate::plugins::environment::systems::voxels::chunk_mesh_compute::ChunkMeshWorker;
+use crate::plugins::environment::systems::voxels::lod_compute::ChunkLodWorker;
 use bevy::prelude::*;
 pub struct AppPlugin;
 
@@ -16,6 +17,7 @@ impl Plugin for AppPlugin {
         app.add_plugins(AppComputeWorkerPlugin::<SphereWorker>::default());
         app.add_plugins(AppComputeWorkerPlugin::<VisibleChunksWorker>::default());
         app.add_plugins(AppComputeWorkerPlugin::<ChunkMeshWorker>::default());
+        app.add_plugins(AppComputeWorkerPlugin::<ChunkLodWorker>::default());
         //app.add_plugins(crate::plugins::network::network_plugin::NetworkPlugin);
         app.add_plugins(crate::plugins::input::input_plugin::InputPlugin);
         app.add_plugins(WireframePlugin);

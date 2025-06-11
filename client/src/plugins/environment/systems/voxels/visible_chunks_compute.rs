@@ -25,7 +25,9 @@ pub struct VisibleParams {
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, ShaderType)]
 pub struct ChunkResult {
-    pub key: IVec3Pod,
+    pub x: i32,
+    pub y: i32,
+    pub z: i32,
     pub dist2: i32,
 }
 
@@ -52,7 +54,7 @@ impl ComputeWorker for VisibleChunksWorker {
         AppComputeWorkerBuilder::new(world)
             .add_uniform("params", &default_params)
             .add_staging("keys_in", &[IVec3Pod { x: 0, y: 0, z: 0, _pad: 0 }; MAX_VISIBLE_CHUNKS])
-            .add_staging("results", &[ChunkResult { key: IVec3Pod { x: 0, y: 0, z: 0, _pad: 0 }, dist2: 0 }; MAX_VISIBLE_CHUNKS])
+            .add_staging("results", &[ChunkResult { x: 0, y: 0, z: 0, dist2: 0 }; MAX_VISIBLE_CHUNKS])
             .add_pass::<VisibleShader>([((MAX_VISIBLE_CHUNKS as u32 + 63) / 64), 1, 1], &["params", "keys_in", "results"])
             .one_shot()
             .synchronous()
