@@ -1,7 +1,7 @@
+use crate::plugins::environment::systems::voxels::structure::*;
 use bevy::asset::RenderAssetUsages;
 use bevy::prelude::*;
-use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues, Mesh};
-use crate::plugins::environment::systems::voxels::structure::*;
+use bevy::render::mesh::{Indices, Mesh, PrimitiveTopology, VertexAttributeValues};
 
 /*pub(crate) fn mesh_chunk(
     buffer: &[[[Option<Voxel>; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize],
@@ -96,7 +96,7 @@ use crate::plugins::environment::systems::voxels::structure::*;
             }
         }
     }
-    
+
     // ------  2nd pass :  +Z faces  ---------------------------------------------
     for z in 0..CHUNK_SIZE {                         //   +Z faces (normal +Z)
         let nz          =  1;
@@ -298,12 +298,12 @@ use crate::plugins::environment::systems::voxels::structure::*;
     mesh
 }*/
 
-
-pub(crate) fn mesh_chunk(
+fn mesh_chunk_impl(
     buffer: &[[[Option<Voxel>; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize],
     origin: Vec3,
-    step:   f32,
-    tree:   &SparseVoxelOctree,
+    step: f32,
+    tree: &SparseVoxelOctree,
+    face_capacity: usize,
 ) -> Option<Mesh> {
     // ────────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -328,12 +328,11 @@ pub(crate) fn mesh_chunk(
     // Push a single quad (4 vertices, 6 indices).  `base` is the lower‑left
     // corner in world space; `u`/`v` are the tangent vectors (length 1); `size`
     // is expressed in world units along those axes; `n` is the face normal.
-    // Preallocate vertex buffers for better performance
-    let voxel_count = N * N * N;
-    let mut positions = Vec::<[f32; 3]>::with_capacity(voxel_count * 4);
-    let mut normals   = Vec::<[f32; 3]>::with_capacity(voxel_count * 4);
-    let mut uvs       = Vec::<[f32; 2]>::with_capacity(voxel_count * 4);
-    let mut indices   = Vec::<u32>::with_capacity(voxel_count * 6);
+    // Preallocate vertex buffers based on the expected number of faces
+    let mut positions = Vec::<[f32; 3]>::with_capacity(face_capacity * 4);
+    let mut normals = Vec::<[f32; 3]>::with_capacity(face_capacity * 4);
+    let mut uvs = Vec::<[f32; 2]>::with_capacity(face_capacity * 4);
+    let mut indices = Vec::<u32>::with_capacity(face_capacity * 6);
 
     let mut push_quad = |base: Vec3, size: Vec2, n: Vec3, u: Vec3, v: Vec3| {
         let i0 = positions.len() as u32;
@@ -361,7 +360,7 @@ pub(crate) fn mesh_chunk(
 
     // Axes: 0→X, 1→Y, 2→Z.  For each axis we process the negative and positive
     // faces (dir = −1 / +1).
-    for (axis, dir) in [ (0, -1), (0, 1), (1, -1), (1, 1), (2, -1), (2, 1) ] {
+    for (axis, dir) in [(0, -1), (0, 1), (1, -1), (1, 1), (2, -1), (2, 1)] {
         // Mapping of (u,v) axes and their unit vectors in world space.
         let (u_axis, v_axis, face_normal, u_vec, v_vec) = match (axis, dir) {
             (0, d) => (1, 2, Vec3::new(d as f32, 0.0, 0.0), Vec3::Y, Vec3::Z),
@@ -386,15 +385,17 @@ pub(crate) fn mesh_chunk(
                     let mut cell = [0i32; 3];
                     let mut neighbor = [0i32; 3];
 
-                    cell [axis] = slice as i32 + if dir == 1 { -1 } else { 0 };
+                    cell[axis] = slice as i32 + if dir == 1 { -1 } else { 0 };
                     neighbor[axis] = cell[axis] + dir;
 
-                    cell [u_axis] = u as i32;
-                    cell [v_axis] = v as i32;
+                    cell[u_axis] = u as i32;
+                    cell[v_axis] = v as i32;
                     neighbor[u_axis] = u as i32;
                     neighbor[v_axis] = v as i32;
 
-                    if filled(cell[0], cell[1], cell[2]) && !filled(neighbor[0], neighbor[1], neighbor[2]) {
+                    if filled(cell[0], cell[1], cell[2])
+                        && !filled(neighbor[0], neighbor[1], neighbor[2])
+                    {
                         mask[idx(u, v)] = true;
                     }
                 }
@@ -409,7 +410,10 @@ pub(crate) fn mesh_chunk(
 
                     // Determine the rectangle width.
                     let mut width = 1;
-                    while u0 + width < N && mask[idx(u0 + width, v0)] && !visited[idx(u0 + width, v0)] {
+                    while u0 + width < N
+                        && mask[idx(u0 + width, v0)]
+                        && !visited[idx(u0 + width, v0)]
+                    {
                         width += 1;
                     }
 
@@ -417,7 +421,9 @@ pub(crate) fn mesh_chunk(
                     let mut height = 1;
                     'h: while v0 + height < N {
                         for du in 0..width {
-                            if !mask[idx(u0 + du, v0 + height)] || visited[idx(u0 + du, v0 + height)] {
+                            if !mask[idx(u0 + du, v0 + height)]
+                                || visited[idx(u0 + du, v0 + height)]
+                            {
                                 break 'h;
                             }
                         }
@@ -466,7 +472,10 @@ pub(crate) fn mesh_chunk(
         return None;
     }
 
-    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
     mesh.insert_attribute(
         Mesh::ATTRIBUTE_POSITION,
         VertexAttributeValues::Float32x3(positions),
@@ -475,12 +484,20 @@ pub(crate) fn mesh_chunk(
         Mesh::ATTRIBUTE_NORMAL,
         VertexAttributeValues::Float32x3(normals),
     );
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_UV_0,
-        VertexAttributeValues::Float32x2(uvs),
-    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, VertexAttributeValues::Float32x2(uvs));
     mesh.insert_indices(Indices::U32(indices));
     Some(mesh)
+}
+
+pub(crate) fn mesh_chunk(
+    buffer: &[[[Option<Voxel>; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize],
+    origin: Vec3,
+    step: f32,
+    tree: &SparseVoxelOctree,
+) -> Option<Mesh> {
+    const N: usize = CHUNK_SIZE as usize;
+    let voxel_count = N * N * N;
+    mesh_chunk_impl(buffer, origin, step, tree, voxel_count * 6)
 }
 
 /// Mesh a chunk using a precomputed face visibility mask. Currently this
@@ -489,9 +506,11 @@ pub(crate) fn mesh_chunk(
 pub(crate) fn mesh_chunk_with_mask(
     buffer: &[[[Option<Voxel>; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize],
     _face_mask: &[u32],
+    face_counts: &[u32],
     origin: Vec3,
     step: f32,
     tree: &SparseVoxelOctree,
 ) -> Option<Mesh> {
-    mesh_chunk(buffer, origin, step, tree)
+    let face_total: usize = face_counts.iter().map(|&c| c as usize).sum();
+    mesh_chunk_impl(buffer, origin, step, tree, face_total)
 }

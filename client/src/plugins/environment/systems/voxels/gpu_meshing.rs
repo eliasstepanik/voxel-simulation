@@ -1,11 +1,10 @@
 use bevy::prelude::*;
-use bevy::render::render_resource::*;
 use bevy::render::render_resource::ComputePipelineDescriptor as RawComputePipelineDescriptor;
+use bevy::render::render_resource::Maintain;
+use bevy::render::render_resource::*;
 use bevy::render::renderer::RenderDevice;
 use bevy::render::renderer::RenderQueue;
-use bevy::render::render_resource::Maintain;
 use crossbeam_channel::bounded;
-
 
 pub struct GpuMesher {
     pipeline: ComputePipeline,
@@ -22,41 +21,42 @@ impl FromWorld for GpuMesher {
             ),
         });
 
-        let bind_group_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("chunk mesh layout"),
-            entries: &[
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+        let bind_group_layout =
+            render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("chunk mesh layout"),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: ShaderStages::COMPUTE,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Storage { read_only: false },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                ],
+            });
 
         let pipeline_layout = render_device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("chunk mesh pipeline layout"),
@@ -111,13 +111,24 @@ impl GpuMesher {
             label: Some("chunk mesh bind group"),
             layout: &self.bind_group_layout,
             entries: &[
-                BindGroupEntry { binding: 0, resource: voxel_buffer.as_entire_binding() },
-                BindGroupEntry { binding: 1, resource: output.as_entire_binding() },
-                BindGroupEntry { binding: 2, resource: count_output.as_entire_binding() },
+                BindGroupEntry {
+                    binding: 0,
+                    resource: voxel_buffer.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: output.as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: count_output.as_entire_binding(),
+                },
             ],
         });
 
-        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("chunk mesh encoder") });
+        let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("chunk mesh encoder"),
+        });
         {
             let mut cpass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("chunk mesh pass"),
@@ -133,9 +144,13 @@ impl GpuMesher {
         let buffer_slice = output.slice(..);
         let count_slice = count_output.slice(..);
         let (s, r) = bounded(1);
-        buffer_slice.map_async(MapMode::Read, move |res| { let _ = s.send(res); });
+        buffer_slice.map_async(MapMode::Read, move |res| {
+            let _ = s.send(res);
+        });
         let (s2, r2) = bounded(1);
-        count_slice.map_async(MapMode::Read, move |res| { let _ = s2.send(res); });
+        count_slice.map_async(MapMode::Read, move |res| {
+            let _ = s2.send(res);
+        });
         device.poll(Maintain::Wait);
         let _ = r.recv();
         let _ = r2.recv();

@@ -1,31 +1,33 @@
-use std::collections::HashMap;
+use crate::plugins::big_space::big_space_plugin::RootGrid;
+use crate::plugins::environment::systems::voxels::gpu_meshing::GpuMesher;
+use crate::plugins::environment::systems::voxels::meshing::{mesh_chunk, mesh_chunk_with_mask};
+use crate::plugins::environment::systems::voxels::structure::*;
 use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
 use bevy::render::mesh::Mesh;
+use bevy::render::renderer::{RenderDevice, RenderQueue};
 use big_space::prelude::GridCell;
 use itertools::Itertools;
-use crate::plugins::big_space::big_space_plugin::RootGrid;
-use crate::plugins::environment::systems::voxels::meshing::{mesh_chunk, mesh_chunk_with_mask};
-use crate::plugins::environment::systems::voxels::gpu_meshing::GpuMesher;
-use bevy::render::renderer::{RenderDevice, RenderQueue};
-use crate::plugins::environment::systems::voxels::structure::*;
+use std::collections::HashMap;
 
 /// rebuilds meshes only for chunks flagged dirty by the octree
 pub fn rebuild_dirty_chunks(
-    mut commands : Commands,
-    mut octrees  : Query<&mut SparseVoxelOctree>,
-    mut meshes   : ResMut<Assets<Mesh>>,
+    mut commands: Commands,
+    mut octrees: Query<&mut SparseVoxelOctree>,
+    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    chunk_q      : Query<(Entity,
-                          &Chunk,
-                          &Mesh3d,
-                          &MeshMaterial3d<StandardMaterial>,
-                          &ChunkLod)>,
-    mut spawned  : ResMut<SpawnedChunks>,
-    root         : Res<RootGrid>,
-    mesher       : Res<GpuMesher>,
+    chunk_q: Query<(
+        Entity,
+        &Chunk,
+        &Mesh3d,
+        &MeshMaterial3d<StandardMaterial>,
+        &ChunkLod,
+    )>,
+    mut spawned: ResMut<SpawnedChunks>,
+    root: Res<RootGrid>,
+    mesher: Res<GpuMesher>,
     render_device: Res<RenderDevice>,
-    render_queue : Res<RenderQueue>,
+    render_queue: Res<RenderQueue>,
 ) {
     // map ChunkKey → (entity, mesh-handle, material-handle)
     let existing: HashMap<ChunkKey, (Entity, Handle<Mesh>, Handle<StandardMaterial>, u32)> =
@@ -43,8 +45,7 @@ pub fn rebuild_dirty_chunks(
         let mut bufs = Vec::new();
         for key in tree.dirty_chunks.iter().copied() {
             let lod = existing.get(&key).map(|v| v.3).unwrap_or(0);
-            let mut buf =
-                [[[None; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize];
+            let mut buf = [[[None; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize];
 
             let half = tree.size * 0.5;
             let step = tree.get_spacing_at_depth(tree.max_depth);
@@ -99,10 +100,10 @@ pub fn rebuild_dirty_chunks(
                     }
                 }
             }
-            let (mask, _counts) = mesher.compute_face_mask(&render_device, &render_queue, &occ);
+            let (mask, counts) = mesher.compute_face_mask(&render_device, &render_queue, &occ);
             if let Some((ent, mesh_h, _mat_h, _)) = existing.get(&key).cloned() {
                 // update mesh in-place; keeps old asset id
-                match mesh_chunk_with_mask(&buf, &mask, origin, step, &tree) {
+                match mesh_chunk_with_mask(&buf, &mask, &counts, origin, step, &tree) {
                     Some(new_mesh) => {
                         if let Some(mesh) = meshes.get_mut(&mesh_h) {
                             *mesh = new_mesh;
@@ -115,10 +116,12 @@ pub fn rebuild_dirty_chunks(
                         spawned.0.remove(&key);
                     }
                 }
-            } else if let Some(mesh) = mesh_chunk_with_mask(&buf, &mask, origin, step, &tree) {
+            } else if let Some(mesh) =
+                mesh_chunk_with_mask(&buf, &mask, &counts, origin, step, &tree)
+            {
                 // spawn brand-new chunk only if mesh has faces
                 let mesh_h = meshes.add(mesh);
-                let mat_h  = materials.add(StandardMaterial::default());
+                let mat_h = materials.add(StandardMaterial::default());
 
                 commands.entity(root.0).with_children(|p| {
                     let e = p
@@ -127,7 +130,11 @@ pub fn rebuild_dirty_chunks(
                             MeshMaterial3d(mat_h.clone()),
                             Transform::default(),
                             GridCell::<i64>::ZERO,
-                            Chunk { key, voxels: Vec::new(), dirty: false },
+                            Chunk {
+                                key,
+                                voxels: Vec::new(),
+                                dirty: false,
+                            },
                             ChunkLod(lod),
                             /*Wireframe,*/
                         ))
