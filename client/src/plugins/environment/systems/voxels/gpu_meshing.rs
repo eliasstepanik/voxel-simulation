@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::render::render_resource::*;
+use bevy::render::render_resource::ComputePipelineDescriptor as RawComputePipelineDescriptor;
 use bevy::render::renderer::RenderDevice;
 use bevy::render::renderer::RenderQueue;
 
@@ -51,11 +52,13 @@ impl FromWorld for GpuMesher {
             push_constant_ranges: &[],
         });
 
-        let pipeline = render_device.create_compute_pipeline(&ComputePipelineDescriptor {
+        let pipeline = render_device.create_compute_pipeline(&RawComputePipelineDescriptor {
             label: Some("chunk mesh pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader_module,
-            entry_point: "main",
+            entry_point: Some("main"),
+            compilation_options: PipelineCompilationOptions::default(),
+            cache: None,
         });
 
         Self {
@@ -66,7 +69,14 @@ impl FromWorld for GpuMesher {
 }
 
 impl GpuMesher {
-    pub fn mesh_chunk(&self, device: &RenderDevice, queue: &RenderQueue, voxels: &[u32], output: &Buffer) {
+    /// Compute the face visibility mask for the given voxel array using the GPU.
+    pub fn compute_face_mask(
+        &self,
+        device: &RenderDevice,
+        queue: &RenderQueue,
+        voxels: &[u32],
+        output: &Buffer,
+    ) {
         let voxel_buffer = device.create_buffer_with_data(&BufferInitDescriptor {
             label: Some("voxel buffer"),
             contents: bytemuck::cast_slice(voxels),
@@ -84,7 +94,10 @@ impl GpuMesher {
 
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor { label: Some("chunk mesh encoder") });
         {
-            let mut cpass = encoder.begin_compute_pass(&ComputePassDescriptor { label: Some("chunk mesh pass") });
+            let mut cpass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("chunk mesh pass"),
+                timestamp_writes: None,
+            });
             cpass.set_pipeline(&self.pipeline);
             cpass.set_bind_group(0, &bind_group, &[]);
             let workgroups = ((voxels.len() as u32) + 63) / 64;
