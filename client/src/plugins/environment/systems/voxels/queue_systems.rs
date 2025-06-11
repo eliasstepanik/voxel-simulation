@@ -79,7 +79,7 @@ pub fn apply_visible_chunk_results(
         .into_iter()
         .filter_map(|r| {
             if r.dist2 < 0 { return None; }
-            let key = (r.key.x, r.key.y, r.key.z);
+            let key = ChunkKey(r.key.x, r.key.y, r.key.z);
             if spawned.0.contains_key(&key) { return None; }
             Some((key, r.dist2))
         })
