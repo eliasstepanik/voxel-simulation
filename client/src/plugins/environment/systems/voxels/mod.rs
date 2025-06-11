@@ -11,3 +11,4 @@ pub mod queue_systems;
 pub mod lod;
 pub mod noise_compute;
 pub mod sphere_compute;
+pub mod visible_chunks_compute;

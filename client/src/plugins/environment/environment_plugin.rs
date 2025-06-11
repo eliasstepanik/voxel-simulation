@@ -4,10 +4,11 @@ use bevy_easy_compute::prelude::*;
 use crate::plugins::environment::systems::voxels::sphere_compute::{SphereWorker, SphereParams, SphereGenerated, execute_sphere_once, apply_sphere_result};
 use crate::plugins::environment::systems::voxels::debug::{draw_grid, visualize_octree_system};
 use crate::plugins::environment::systems::voxels::queue_systems;
-use crate::plugins::environment::systems::voxels::queue_systems::{enqueue_visible_chunks, process_chunk_queue};
+use crate::plugins::environment::systems::voxels::queue_systems::{enqueue_visible_chunks, process_chunk_queue, apply_visible_chunk_results};
 use crate::plugins::environment::systems::voxels::render_chunks::rebuild_dirty_chunks;
 use crate::plugins::environment::systems::voxels::lod::update_chunk_lods;
 use crate::plugins::environment::systems::voxels::structure::{ChunkBudget, ChunkCullingCfg, ChunkQueue, SparseVoxelOctree, SpawnedChunks, PrevCameraChunk};
+use crate::plugins::environment::systems::voxels::visible_chunks_compute::VisibleChunkCount;
 
 pub struct EnvironmentPlugin;
 impl Plugin for EnvironmentPlugin {
@@ -35,6 +36,7 @@ impl Plugin for EnvironmentPlugin {
             // ------------------------------------------------------------------------
             .init_resource::<ChunkQueue>()
             .init_resource::<SpawnedChunks>()
+            .init_resource::<VisibleChunkCount>()
             // ------------------------------------------------------------------------
             // frame update
             // ------------------------------------------------------------------------
@@ -43,7 +45,8 @@ impl Plugin for EnvironmentPlugin {
                 (
                     /* ---------- culling & streaming ---------- */
                     enqueue_visible_chunks,
-                    process_chunk_queue.after(enqueue_visible_chunks),
+                    apply_visible_chunk_results.after(enqueue_visible_chunks),
+                    process_chunk_queue.after(apply_visible_chunk_results),
                     update_chunk_lods.after(process_chunk_queue),
                     rebuild_dirty_chunks .after(process_chunk_queue),
                     apply_sphere_result.after(rebuild_dirty_chunks),             // 4.  (re)mesh dirty chunks
