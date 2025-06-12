@@ -10,10 +10,11 @@ pub fn update_chunk_lods(
     mut tree_q: Query<&mut SparseVoxelOctree>,
     cfg: Res<ChunkCullingCfg>,
 ) {
-    let cam_pos = cam_q.single().translation();
+    let Ok(cam_tf) = cam_q.get_single() else { return };
+    let cam_pos = cam_tf.translation();
 
     // Borrow the octree only once to avoid repeated query lookups
-    let mut tree = tree_q.single_mut();
+    let Ok(mut tree) = tree_q.get_single_mut() else { return };
     let max_depth = tree.max_depth - 1;
     let range_step = cfg.view_distance_chunks as f32 / (max_depth as f32 - 1.0);
     let chunk_size = CHUNK_SIZE as f32 * tree.get_spacing_at_depth(max_depth);

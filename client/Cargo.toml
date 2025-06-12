@@ -9,7 +9,7 @@ build = "build.rs"
 
 
 [dependencies]
-bevy = { version = "0.15.1", features = ["jpeg", "trace_tracy", "trace_tracy_memory", "serialize"] }
+bevy = { version = "0.16.1", features = ["jpeg", "trace_tracy", "trace_tracy_memory", "serialize"] }
 rand = "0.8.5"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"

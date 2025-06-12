@@ -20,8 +20,9 @@ pub fn despawn_distant_chunks(
     mut materials: ResMut<Assets<StandardMaterial>>,
     cfg          : Res<ChunkCullingCfg>,
 ) {
-    let tree   = tree_q.single();
-    let cam    = cam_q.single().translation();
+    let Ok(tree) = tree_q.get_single() else { return };
+    let Ok(cam_tf) = cam_q.get_single() else { return };
+    let cam    = cam_tf.translation();
     let centre = world_to_chunk(tree, cam);
 
     for (ent, chunk, mesh3d, mat3d) in chunk_q.iter() {

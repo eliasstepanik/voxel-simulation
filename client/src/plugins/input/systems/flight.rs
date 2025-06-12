@@ -37,9 +37,9 @@ pub fn flight_systems(
     // 1) Rotation & speed input (borrow transform/controller)
     //------------------------------------------------------------
     let delta_vec3 = {
-        let mut window     = windows.single_mut();
-        let mut transform  = xforms.single_mut();
-        let mut controller = ctrls.single_mut();
+        let Ok(mut window)     = windows.get_single_mut() else { return };
+        let Ok(mut transform)  = xforms.get_single_mut() else { return };
+        let Ok(mut controller) = ctrls.get_single_mut() else { return };
 
         //------------------ mouse look --------------------------
         if !window.cursor_options.visible {

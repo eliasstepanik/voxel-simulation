@@ -8,7 +8,7 @@ pub fn ui_system(
     mut app_exit_events: EventWriter<AppExit>,
     mut windows: Query<&mut Window>,
 ) {
-    let mut window = windows.single_mut();
+    let Ok(mut window) = windows.get_single_mut() else { return };
 
     if keyboard_input.just_pressed(KeyCode::KeyL) {
         // Toggle between locked and unlocked
@@ -24,6 +24,6 @@ pub fn ui_system(
     }
     
     if keyboard_input.pressed(KeyCode::Escape) {
-        app_exit_events.send(Default::default());
+        app_exit_events.write(Default::default());
     }
 }

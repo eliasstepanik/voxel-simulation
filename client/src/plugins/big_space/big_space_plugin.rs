@@ -1,5 +1,7 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
+use bevy::ecs::prelude::ChildOf;
+
 use big_space::prelude::*;
 
 /// Plugin enabling high precision coordinates using `big_space`.
@@ -31,7 +33,7 @@ fn spawn_root(mut commands: Commands) {
 // 2) cache the root entity for later use
 fn cache_root(
     mut commands: Commands,
-    roots: Query<Entity, (With<BigSpace>, Without<Parent>)>,   // top-level grid
+    roots: Query<Entity, (With<BigSpace>, Without<ChildOf>)>,   // top-level grid
 ) {
     if let Ok(entity) = roots.get_single() {
 
@@ -42,7 +44,7 @@ fn cache_root(
 
 fn fix_invalid_children(
     mut commands: Commands,
-    bad: Query<Entity, (With<FloatingOrigin>, Without<GridCell<i64>>, With<Parent>)>,
+    bad: Query<Entity, (With<FloatingOrigin>, Without<GridCell<i64>>, With<ChildOf>)>,
 ) {
     for e in &bad {
         commands.entity(e).insert(GridCell::<i64>::ZERO);
@@ -65,10 +67,10 @@ pub fn teleport_to<P: GridPrecision>(
     e: Entity,
     target: DVec3,
     grids: Grids<'_, '_, P>,
-    mut q: Query<(&Parent, &mut GridCell<P>, &mut Transform)>,
+    mut q: Query<(&ChildOf, &mut GridCell<P>, &mut Transform)>,
 ) {
-    let (parent, mut cell, mut tf) = q.get_mut(e).unwrap();
-    let grid = grids.parent_grid(parent.get()).unwrap();
+    let (child_of, mut cell, mut tf) = q.get_mut(e).unwrap();
+    let grid = grids.parent_grid(child_of.parent()).unwrap();
 
     let (new_cell, local) = grid.translation_to_grid(target);
 

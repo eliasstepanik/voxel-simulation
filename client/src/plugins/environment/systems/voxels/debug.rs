@@ -100,7 +100,7 @@ pub fn draw_grid(
     camera_query: Query<&Transform, With<Camera>>,
     octree_query: Query<(&SparseVoxelOctree, &Transform)>,
 ) {
-    let camera_tf = camera_query.single();
+    let Ok(camera_tf) = camera_query.get_single() else { return };
     let camera_pos = camera_tf.translation;
 
     for (octree, octree_tf) in octree_query.iter() {

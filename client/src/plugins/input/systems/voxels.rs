@@ -14,8 +14,8 @@ pub fn voxel_system(
     mut query: Query<(&mut Transform, &mut CameraController)>,
     mut windows: Query<&mut Window>,
 ) {
-    let mut window = windows.single_mut();
-    let (mut transform, _) = query.single_mut();
+    let Ok(mut window) = windows.get_single_mut() else { return };
+    let Ok((mut transform, _)) = query.get_single_mut() else { return };
 
     // =======================
     // 5) Octree Keys
