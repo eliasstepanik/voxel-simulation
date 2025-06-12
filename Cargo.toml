@@ -1,3 +1,22 @@
 [workspace]
 resolver = "2"
 members = ["client"]
+
+[patch.crates-io]
+bevy = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_app = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_ecs = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_log = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_math = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_reflect = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_tasks = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_transform = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_utils = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_platform = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_color = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_gizmos = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_render = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_input = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_time = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+bevy_window = { git = "https://github.com/bevyengine/bevy.git", tag = "v0.16.1" }
+
