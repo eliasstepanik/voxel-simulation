@@ -36,7 +36,7 @@ pub fn setup(
             Name::new("Planet"),
             Mesh3d(sphere_mesh.clone()),
             MeshMaterial3d(material_handle),
-            GridCell::<i64>::ZERO,
+            GridCell::ZERO,
             Transform::default(),
             PlanetMaker,
             Wireframe,

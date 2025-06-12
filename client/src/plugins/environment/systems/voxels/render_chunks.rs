@@ -109,7 +109,7 @@ pub fn rebuild_dirty_chunks(
                             Mesh3d::from(mesh_h.clone()),
                             MeshMaterial3d(mat_h.clone()),
                             Transform::default(),
-                            GridCell::<i64>::ZERO,
+                            GridCell::ZERO,
                             Chunk { key, voxels: Vec::new(), dirty: false },
                             ChunkLod(lod),
                             /*Wireframe,*/

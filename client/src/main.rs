@@ -13,7 +13,7 @@ use bevy::render::RenderPlugin;
 use bevy::DefaultPlugins;
 use bevy::input::gamepad::AxisSettingsError::DeadZoneUpperBoundGreaterThanLiveZoneUpperBound;
 use bevy::window::PresentMode;
-use big_space::plugin::BigSpacePlugin;
+use big_space::plugin::BigSpaceDefaultPlugins;
 use toml;
 use crate::config::Config;
 use crate::plugins::big_space::big_space_plugin::BigSpaceIntegrationPlugin;

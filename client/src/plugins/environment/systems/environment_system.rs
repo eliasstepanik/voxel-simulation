@@ -21,21 +21,21 @@ pub(crate) fn setup(
         ..default()
     });
 
-    // light (unchanged)
+    // light
     commands.entity(root.0).with_children(|p| {
-        p.spawn(DirectionalLightBundle {
-            transform: Transform::from_rotation(Quat::from_euler(
+        p.spawn((
+            Transform::from_rotation(Quat::from_euler(
                 EulerRot::XYZ,
                 -std::f32::consts::FRAC_PI_4,
                 0.0,
                 0.0,
             )),
-            directional_light: DirectionalLight {
+            GlobalTransform::default(),
+            DirectionalLight {
                 shadows_enabled: true,
                 ..default()
             },
-            ..default()
-        });
+        ));
     });
 
     /*// ---------- spawn spheres from football-size up to Earth-size ----------
@@ -59,7 +59,7 @@ pub(crate) fn setup(
 
             parent.spawn((
                 // spatial requirements for big_space
-                GridCell::<i64>::ZERO,
+                GridCell::ZERO,
                 Transform::from_scale(scale_v3).with_translation(pos),
                 GlobalTransform::default(),
                 // rendering

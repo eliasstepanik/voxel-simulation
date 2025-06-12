@@ -1,6 +1,7 @@
 
 use bevy::app::{App, Plugin, PreUpdate, Startup};
-use bevy::prelude::{IntoSystemConfigs, Update};
+use bevy::ecs::schedule::IntoScheduleConfigs;
+use bevy::prelude::Update;
 
 pub struct InputPlugin;
 impl Plugin for InputPlugin {
