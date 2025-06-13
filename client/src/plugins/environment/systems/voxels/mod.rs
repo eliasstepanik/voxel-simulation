@@ -7,6 +7,6 @@ mod chunk;
 pub mod culling;
 pub mod lod;
 mod meshing;
-mod meshing_gpu;
+pub mod meshing_gpu;
 pub mod queue_systems;
 pub mod render_chunks;

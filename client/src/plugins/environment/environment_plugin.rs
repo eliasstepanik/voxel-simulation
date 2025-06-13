@@ -1,6 +1,9 @@
 use crate::plugins::environment::systems::voxels::debug::{draw_grid, visualize_octree_system};
 use crate::plugins::environment::systems::voxels::lod::update_chunk_lods;
-use crate::plugins::environment::systems::voxels::meshing_gpu::GpuMeshingPlugin;
+use crate::plugins::environment::systems::voxels::meshing_gpu::{
+    GpuMeshingWorker, queue_gpu_meshing,
+};
+use bevy_app_compute::prelude::{AppComputePlugin, AppComputeWorkerPlugin};
 use crate::plugins::environment::systems::voxels::queue_systems;
 use crate::plugins::environment::systems::voxels::queue_systems::{
     enqueue_visible_chunks, process_chunk_queue,
@@ -25,7 +28,8 @@ impl Plugin for EnvironmentPlugin {
                 crate::plugins::environment::systems::voxel_system::setup,
             ),
         );
-        app.add_plugins(GpuMeshingPlugin);
+        app.add_plugins(AppComputePlugin);
+        app.add_plugins(AppComputeWorkerPlugin::<GpuMeshingWorker>::default());
 
         let view_distance_chunks = 100;
         app.insert_resource(ChunkCullingCfg {
@@ -52,6 +56,7 @@ impl Plugin for EnvironmentPlugin {
                     process_chunk_queue.after(enqueue_visible_chunks),
                     update_chunk_lods.after(process_chunk_queue),
                     rebuild_dirty_chunks.after(process_chunk_queue), // 4.  (re)mesh dirty chunks
+                    queue_gpu_meshing.after(rebuild_dirty_chunks),
                     /* ---------- optional debug drawing ------- */
                     visualize_octree_system
                         .run_if(should_visualize_octree)
