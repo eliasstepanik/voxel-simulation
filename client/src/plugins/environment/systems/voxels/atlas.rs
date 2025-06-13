@@ -20,12 +20,12 @@ impl VoxelTextureAtlas {
         let height = tile_size * rows as u32;
         let mut data = vec![0u8; (width * height * 4) as usize];
         let colors = [
-            [255, 0, 0, 255],   // red
-            [0, 255, 0, 255],   // green
-            [0, 0, 255, 255],   // blue
-            [255, 255, 0, 255], // yellow
-            [255, 0, 255, 255], // magenta
-            [0, 255, 255, 255], // cyan
+            [255, 0, 0, 255],   // 0: red
+            [0, 0, 0, 255],     // 1: black
+            [0, 255, 0, 255],   // 2: green
+            [0, 0, 255, 255],   // 3: blue
+            [255, 255, 0, 255], // 4: yellow
+            [255, 0, 255, 255], // 5: magenta
         ];
         for (i, col) in colors.iter().enumerate() {
             let cx = (i % columns) as u32 * tile_size;

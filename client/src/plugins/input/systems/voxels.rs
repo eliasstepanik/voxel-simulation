@@ -36,7 +36,7 @@ pub fn voxel_system(
 
     if keyboard_input.just_pressed(KeyCode::KeyQ) && window.cursor_options.visible == false {
         for mut octree in octree_query.iter_mut() {
-            octree.insert(transform.translation, Voxel::new([0; 6]));
+            octree.insert(transform.translation, Voxel::random_sides());
         }
     }
     if keyboard_input.just_pressed(KeyCode::F4) {
@@ -106,7 +106,7 @@ pub fn voxel_system(
                             + (normal * Vec3::new(epsilon as f32, epsilon as f32, epsilon as f32));
 
                         // Insert the new voxel
-                        octree.insert(offset_position, Voxel::new([0; 6]));
+                        octree.insert(offset_position, Voxel::random_sides());
                     }
                 }
             }

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -66,6 +67,21 @@ impl OctreeNode {
 impl Voxel {
     /// Creates a new empty octree node.
     pub fn new(textures: [usize; 6]) -> Self {
+        Self { textures }
+    }
+
+    /// Generate a voxel with a red top, black bottom and random colors on
+    /// all remaining faces. Assumes the atlas uses index 0 for red, index 1
+    /// for black and indices >=2 for random colors.
+    pub fn random_sides() -> Self {
+        let mut rng = rand::thread_rng();
+        let mut textures = [0usize; 6];
+        // Face order: left, right, bottom, top, back, front
+        textures[3] = 0; // top is red
+        textures[2] = 1; // bottom is black
+        for &i in &[0usize, 1usize, 4usize, 5usize] {
+            textures[i] = rng.gen_range(2..6);
+        }
         Self { textures }
     }
 }
