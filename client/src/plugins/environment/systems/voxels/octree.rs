@@ -1,19 +1,27 @@
-use std::collections::{HashMap, HashSet};
-use std::path::Path;
-use std::io;
-use bincode;
+use crate::plugins::environment::systems::voxels::helper::chunk_key_from_world;
+use crate::plugins::environment::systems::voxels::structure::{
+    AABB, CHUNK_SIZE, ChunkKey, DirtyVoxel, NEIGHBOR_OFFSETS, OctreeNode, Ray, SparseVoxelOctree,
+    Voxel,
+};
 use bevy::asset::Assets;
-use bevy::color::Color;
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 use bevy::render::render_asset::RenderAssetUsages;
-use crate::plugins::environment::systems::voxels::helper::chunk_key_from_world;
-use crate::plugins::environment::systems::voxels::structure::{DirtyVoxel, OctreeNode, Ray, SparseVoxelOctree, Voxel, AABB, NEIGHBOR_OFFSETS, CHUNK_SIZE, ChunkKey};
+use bincode;
+use std::collections::{HashMap, HashSet};
+use std::io;
+use std::path::Path;
 
 impl SparseVoxelOctree {
     /// Creates a new octree with the specified max depth, size, and wireframe visibility.
-    pub fn new(max_depth: u32, size: f32, show_wireframe: bool, show_world_grid: bool, show_chunks: bool) -> Self {
+    pub fn new(
+        max_depth: u32,
+        size: f32,
+        show_wireframe: bool,
+        show_world_grid: bool,
+        show_chunks: bool,
+    ) -> Self {
         Self {
             root: OctreeNode::new(),
             max_depth,
@@ -38,16 +46,13 @@ impl SparseVoxelOctree {
             world_center = self.denormalize_voxel_center(aligned);
         }
 
-        let dirty_voxel = DirtyVoxel{
-            position: aligned,
-        };
+        let dirty_voxel = DirtyVoxel { position: aligned };
 
         self.dirty.push(dirty_voxel);
         let key = chunk_key_from_world(self, position);
         self.dirty_chunks.insert(key);
         self.mark_neighbor_chunks_dirty(position);
         self.occupied_chunks.insert(key);
-
 
         Self::insert_recursive(&mut self.root, aligned, voxel, self.max_depth);
     }
@@ -147,9 +152,12 @@ impl SparseVoxelOctree {
     /// Mark all six neighbor chunks of the given key as dirty if they exist.
     pub fn mark_neighbors_dirty_from_key(&mut self, key: ChunkKey) {
         let offsets = [
-            (-1, 0, 0), (1, 0, 0),
-            (0, -1, 0), (0, 1, 0),
-            (0, 0, -1), (0, 0, 1),
+            (-1, 0, 0),
+            (1, 0, 0),
+            (0, -1, 0),
+            (0, 1, 0),
+            (0, 0, -1),
+            (0, 0, 1),
         ];
         for (dx, dy, dz) in offsets {
             let neighbor = ChunkKey(key.0 + dx, key.1 + dy, key.2 + dz);
@@ -159,13 +167,7 @@ impl SparseVoxelOctree {
         }
     }
 
-    fn remove_recursive(
-        node: &mut OctreeNode,
-        x: f32,
-        y: f32,
-        z: f32,
-        depth: u32,
-    ) -> bool {
+    fn remove_recursive(node: &mut OctreeNode, x: f32, y: f32, z: f32, depth: u32) -> bool {
         if depth == 0 {
             if node.voxel.is_some() {
                 node.voxel = None;
@@ -222,7 +224,6 @@ impl SparseVoxelOctree {
         false
     }
 
-
     fn expand_root(&mut self, _x: f32, _y: f32, _z: f32) {
         info!("Root expanding ...");
         // Save the old root and its size.
@@ -244,7 +245,15 @@ impl SparseVoxelOctree {
     /// The coordinate system here assumes the node covers [–old_size/2, +old_size/2] in each axis.
     fn collect_voxels_from_node(node: &OctreeNode, old_size: f32) -> Vec<(Vec3, Voxel, u32)> {
         let mut voxels = Vec::new();
-        Self::collect_voxels_recursive(node, -old_size / 2.0, -old_size / 2.0, -old_size / 2.0, old_size, 0, &mut voxels);
+        Self::collect_voxels_recursive(
+            node,
+            -old_size / 2.0,
+            -old_size / 2.0,
+            -old_size / 2.0,
+            old_size,
+            0,
+            &mut voxels,
+        );
         voxels
     }
 
@@ -270,14 +279,20 @@ impl SparseVoxelOctree {
                 let offset_x = if (i & 1) != 0 { half } else { 0.0 };
                 let offset_y = if (i & 2) != 0 { half } else { 0.0 };
                 let offset_z = if (i & 4) != 0 { half } else { 0.0 };
-                Self::collect_voxels_recursive(child, x + offset_x, y + offset_y, z + offset_z, half, depth + 1, out);
+                Self::collect_voxels_recursive(
+                    child,
+                    x + offset_x,
+                    y + offset_y,
+                    z + offset_z,
+                    half,
+                    depth + 1,
+                    out,
+                );
             }
         }
     }
 
-
-
-    pub fn traverse(&self) -> Vec<(Vec3, Color, u32)> {
+    pub fn traverse(&self) -> Vec<(Vec3, u32)> {
         let mut voxels = Vec::new();
         // Start at the normalized center (0.5, 0.5, 0.5) rather than (0,0,0)
         Self::traverse_recursive(
@@ -296,20 +311,20 @@ impl SparseVoxelOctree {
         local_center: Vec3,
         size: f32,
         depth: u32,
-        out: &mut Vec<(Vec3, Color, u32)>,
+        out: &mut Vec<(Vec3, u32)>,
         octree: &SparseVoxelOctree,
     ) {
         // If a leaf contains a voxel, record its world-space center
         if node.is_leaf {
             if let Some(voxel) = node.voxel {
-                out.push((octree.denormalize_voxel_center(local_center), voxel.color, depth));
+                out.push((octree.denormalize_voxel_center(local_center), depth));
             }
         }
 
         // If the node has children, subdivide the cell into 8 subcells.
         if let Some(ref children) = node.children {
-            let offset = size / 4.0;  // child center offset from parent center
-            let new_size = size / 2.0;  // each child cell's size in normalized space
+            let offset = size / 4.0; // child center offset from parent center
+            let new_size = size / 2.0; // each child cell's size in normalized space
             for (i, child) in children.iter().enumerate() {
                 // Compute each axis' offset: use +offset if the bit is set, else -offset.
                 let dx = if (i & 1) != 0 { offset } else { -offset };
@@ -321,8 +336,6 @@ impl SparseVoxelOctree {
             }
         }
     }
-
-
 
     /// Retrieve a voxel from the octree if it exists (x,y,z in [-0.5..+0.5] range).
     pub fn get_voxel_at(&self, x: f32, y: f32, z: f32) -> Option<&Voxel> {
@@ -388,7 +401,6 @@ impl SparseVoxelOctree {
         self.get_voxel_at_world_coords(neighbor_world).is_some()
     }
 
-
     /// Performs a raycast against the octree and returns the first intersected voxel.
     pub fn raycast(&self, ray: &Ray) -> Option<(f32, f32, f32, u32, Vec3)> {
         // Start from the root node
@@ -397,12 +409,7 @@ impl SparseVoxelOctree {
             min: Vec3::new(-half_size as f32, -half_size as f32, -half_size as f32),
             max: Vec3::new(half_size as f32, half_size as f32, half_size as f32),
         };
-        self.raycast_recursive(
-            &self.root,
-            ray,
-            &root_bounds,
-            0,
-        )
+        self.raycast_recursive(&self.root, ray, &root_bounds, 0)
     }
 
     fn raycast_recursive(
@@ -435,7 +442,8 @@ impl SparseVoxelOctree {
                 let mut hits = Vec::new();
                 for (i, child) in children.iter().enumerate() {
                     let child_bounds = self.compute_child_bounds(bounds, i);
-                    if let Some(hit) = self.raycast_recursive(child, ray, &child_bounds, depth + 1) {
+                    if let Some(hit) = self.raycast_recursive(child, ray, &child_bounds, depth + 1)
+                    {
                         hits.push(hit);
                     }
                 }
@@ -445,11 +453,11 @@ impl SparseVoxelOctree {
                         let dist_a = ((a.0 as f32 - ray.origin.x).powi(2)
                             + (a.1 as f32 - ray.origin.y).powi(2)
                             + (a.2 as f32 - ray.origin.z).powi(2))
-                            .sqrt();
+                        .sqrt();
                         let dist_b = ((b.0 as f32 - ray.origin.x).powi(2)
                             + (b.1 as f32 - ray.origin.y).powi(2)
                             + (b.2 as f32 - ray.origin.z).powi(2))
-                            .sqrt();
+                        .sqrt();
                         dist_a.partial_cmp(&dist_b).unwrap()
                     });
                     return Some(hits[0]);
@@ -462,16 +470,15 @@ impl SparseVoxelOctree {
 
     /// Save the octree to a file using bincode serialization.
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        let data = bincode::serialize(self)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let data = bincode::serialize(self).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         std::fs::write(path, data)
     }
 
     /// Load an octree from a file and rebuild runtime caches.
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let bytes = std::fs::read(path)?;
-        let mut tree: Self = bincode::deserialize(&bytes)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let mut tree: Self =
+            bincode::deserialize(&bytes).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         tree.rebuild_cache();
         Ok(tree)
     }
@@ -481,7 +488,7 @@ impl SparseVoxelOctree {
         self.dirty.clear();
         self.dirty_chunks.clear();
         self.occupied_chunks.clear();
-        
+
         let voxels = Self::collect_voxels_from_node(&self.root, self.size);
         for (pos, _voxel, _depth) in voxels {
             let key = chunk_key_from_world(self, pos);
@@ -489,4 +496,3 @@ impl SparseVoxelOctree {
         }
     }
 }
-

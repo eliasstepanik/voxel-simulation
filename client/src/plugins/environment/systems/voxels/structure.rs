@@ -1,32 +1,21 @@
-use bevy::color::Color;
 use bevy::prelude::*;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use rand::Rng;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-fn serialize_color<S>(color: &Color, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let [r, g, b, a] = color.to_linear().to_f32_array();
-    [r, g, b, a].serialize(serializer)
-}
-
-fn deserialize_color<'de, D>(deserializer: D) -> Result<Color, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let arr: [f32; 4] = Deserialize::deserialize(deserializer)?;
-    Ok(Color::linear_rgba(arr[0], arr[1], arr[2], arr[3]))
-}
-
-/// Represents a single voxel with a color.
-#[derive(Debug, Clone, Copy, Component, PartialEq, Default, Serialize, Deserialize)]
+/// Represents a single voxel with texture indices for each face.
+#[derive(Debug, Clone, Copy, Component, PartialEq, Serialize, Deserialize)]
 pub struct Voxel {
-    #[serde(
-        serialize_with = "serialize_color",
-        deserialize_with = "deserialize_color"
-    )]
-    pub color: Color,
+    /// Indexes into the texture atlas for the six faces in the order
+    /// left, right, bottom, top, back, front.
+    #[serde(default)]
+    pub textures: [usize; 6],
+}
+
+impl Default for Voxel {
+    fn default() -> Self {
+        Self { textures: [0; 6] }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -77,8 +66,23 @@ impl OctreeNode {
 
 impl Voxel {
     /// Creates a new empty octree node.
-    pub fn new(color: Color) -> Self {
-        Self { color }
+    pub fn new(textures: [usize; 6]) -> Self {
+        Self { textures }
+    }
+
+    /// Generate a voxel with a red top, black bottom and random colors on
+    /// all remaining faces. Assumes the atlas uses index 0 for red, index 1
+    /// for black and indices >=2 for random colors.
+    pub fn random_sides() -> Self {
+        let mut rng = rand::thread_rng();
+        let mut textures = [0usize; 6];
+        // Face order: left, right, bottom, top, back, front
+        textures[3] = 0; // top is red
+        textures[2] = 1; // bottom is black
+        for &i in &[0usize, 1usize, 4usize, 5usize] {
+            textures[i] = rng.gen_range(2..6);
+        }
+        Self { textures }
     }
 }
 

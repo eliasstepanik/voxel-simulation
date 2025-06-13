@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use crate::plugins::environment::systems::voxels::structure::*;
+use bevy::prelude::*;
 
 /// Visualize each node of the octree as a scaled cuboid, **center-based**.
 /// `octree_tf.translation` is the world-space center of the root bounding box.
@@ -13,8 +13,7 @@ pub fn visualize_octree_system(
 
         // Draw a translucent cuboid for the root
         gizmos.cuboid(
-            Transform::from_translation(octree_tf.translation)
-                .with_scale(Vec3::splat(octree.size)),
+            Transform::from_translation(octree_tf.translation).with_scale(Vec3::splat(octree.size)),
             Color::srgba(1.0, 1.0, 0.0, 0.15),
         );
 
@@ -85,9 +84,8 @@ fn visualize_recursive_center(
 
                 // Draw a small cuboid at the same center as the parent node.
                 gizmos.cuboid(
-                    Transform::from_translation(parent_center)
-                        .with_scale(Vec3::splat(leaf_size)),
-                    voxel.color,
+                    Transform::from_translation(parent_center).with_scale(Vec3::splat(leaf_size)),
+                    Color::WHITE,
                 );
             }
         }
@@ -100,7 +98,9 @@ pub fn draw_grid(
     camera_query: Query<&Transform, With<Camera>>,
     octree_query: Query<(&SparseVoxelOctree, &Transform)>,
 ) {
-    let Ok(camera_tf) = camera_query.get_single() else { return };
+    let Ok(camera_tf) = camera_query.get_single() else {
+        return;
+    };
     let camera_pos = camera_tf.translation;
 
     for (octree, octree_tf) in octree_query.iter() {

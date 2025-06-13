@@ -1,6 +1,7 @@
 use crate::plugins::big_space::big_space_plugin::RootGrid;
 use crate::plugins::environment::systems::voxels::meshing::mesh_chunk;
 use crate::plugins::environment::systems::voxels::structure::*;
+use crate::plugins::environment::systems::voxels::atlas::VoxelTextureAtlas;
 use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
 use bevy::render::mesh::Mesh;
@@ -25,6 +26,7 @@ pub fn rebuild_dirty_chunks(
     mut spawned: ResMut<SpawnedChunks>,
     mut pool: ResMut<MeshBufferPool>,
     root: Res<RootGrid>,
+    atlas: Res<VoxelTextureAtlas>,
 ) {
     // map ChunkKey → (entity, mesh-handle, material-handle)
     let existing: HashMap<ChunkKey, (Entity, Handle<Mesh>, Handle<StandardMaterial>, u32)> =
@@ -87,7 +89,7 @@ pub fn rebuild_dirty_chunks(
         for (key, buf, origin, step, lod) in bufs {
             if let Some((ent, mesh_h, _mat_h, _)) = existing.get(&key).cloned() {
                 // update mesh in-place; keeps old asset id
-                match mesh_chunk(&buf, origin, step, &tree, &mut pool) {
+                match mesh_chunk(&buf, origin, step, &tree, &mut pool, &atlas) {
                     Some(new_mesh) => {
                         if let Some(mesh) = meshes.get_mut(&mesh_h) {
                             *mesh = new_mesh;
@@ -100,10 +102,13 @@ pub fn rebuild_dirty_chunks(
                         spawned.0.remove(&key);
                     }
                 }
-            } else if let Some(mesh) = mesh_chunk(&buf, origin, step, &tree, &mut pool) {
+            } else if let Some(mesh) = mesh_chunk(&buf, origin, step, &tree, &mut pool, &atlas) {
                 // spawn brand-new chunk only if mesh has faces
                 let mesh_h = meshes.add(mesh);
-                let mat_h = materials.add(StandardMaterial::default());
+                let mat_h = materials.add(StandardMaterial {
+                    base_color_texture: Some(atlas.handle.clone()),
+                    ..Default::default()
+                });
 
                 commands.entity(root.0).with_children(|p| {
                     let e = p
