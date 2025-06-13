@@ -33,7 +33,10 @@ pub fn voxel_system(
 
     if keyboard_input.just_pressed(KeyCode::KeyQ) && window.cursor_options.visible == false{
         for mut octree in octree_query.iter_mut() {
-            octree.insert(transform.translation, Voxel::new(Color::srgb(1.0, 0.0, 0.0)));
+            octree.insert(
+                transform.translation,
+                Voxel::new(Color::srgb(1.0, 0.0, 0.0), [0; 6]),
+            );
         }
     }
     if keyboard_input.just_pressed(KeyCode::F4){
@@ -111,7 +114,7 @@ pub fn voxel_system(
                         // Insert the new voxel
                         octree.insert(
                             offset_position,
-                            Voxel::new(Color::srgb(1.0, 0.0, 0.0)),
+                            Voxel::new(Color::srgb(1.0, 0.0, 0.0), [0; 6]),
                         );
                     }
                 }
