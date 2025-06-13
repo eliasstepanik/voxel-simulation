@@ -8,9 +8,7 @@ use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
 use bevy::render::mesh::Mesh;
 use big_space::prelude::GridCell;
-use itertools::Itertools;
 use std::collections::HashMap;
-use std::fmt::format;
 
 /// rebuilds meshes only for chunks flagged dirty by the octree
 pub fn rebuild_dirty_chunks(
