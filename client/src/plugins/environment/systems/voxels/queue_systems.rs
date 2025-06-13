@@ -14,8 +14,9 @@ pub fn enqueue_visible_chunks(
     cam_q          : Query<&GlobalTransform, With<Camera>>,
     tree_q         : Query<&SparseVoxelOctree>,
 ) {
-    let tree     = tree_q.single();
-    let cam_pos  = cam_q.single().translation();
+    let Ok(tree)     = tree_q.get_single() else { return };
+    let Ok(cam_tf)  = cam_q.get_single() else { return };
+    let cam_pos  = cam_tf.translation();
     let centre   = world_to_chunk(tree, cam_pos);
 
     if prev_cam.0 == Some(centre) {
@@ -54,7 +55,7 @@ pub fn process_chunk_queue(
     budget      : Res<ChunkBudget>,
     mut tree_q  : Query<&mut SparseVoxelOctree>,
 ) {
-    let mut tree = tree_q.single_mut();
+    let Ok(mut tree) = tree_q.get_single_mut() else { return };
     for _ in 0..budget.per_frame {
         if let Some(key) = queue.keys.pop_front() {
             queue.set.remove(&key);

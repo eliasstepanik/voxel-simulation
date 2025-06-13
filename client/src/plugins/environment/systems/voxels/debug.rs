@@ -15,7 +15,7 @@ pub fn visualize_octree_system(
         gizmos.cuboid(
             Transform::from_translation(octree_tf.translation)
                 .with_scale(Vec3::splat(octree.size)),
-            Color::rgba(1.0, 1.0, 0.0, 0.15),
+            Color::srgba(1.0, 1.0, 0.0, 0.15),
         );
 
         // Recursively draw children:
@@ -62,7 +62,7 @@ fn visualize_recursive_center(
             // Draw the child bounding box
             gizmos.cuboid(
                 Transform::from_translation(child_center).with_scale(Vec3::splat(child_size)),
-                Color::rgba(0.5, 1.0, 0.5, 0.15), // greenish
+                Color::srgba(0.5, 1.0, 0.5, 0.15), // greenish
             );
 
             // Recurse
@@ -100,7 +100,7 @@ pub fn draw_grid(
     camera_query: Query<&Transform, With<Camera>>,
     octree_query: Query<(&SparseVoxelOctree, &Transform)>,
 ) {
-    let camera_tf = camera_query.single();
+    let Ok(camera_tf) = camera_query.get_single() else { return };
     let camera_pos = camera_tf.translation;
 
     for (octree, octree_tf) in octree_query.iter() {

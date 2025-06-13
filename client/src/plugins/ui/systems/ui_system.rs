@@ -43,9 +43,9 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 ///  - current chunk coordinate
 
 pub fn update(
-    grids: Grids<'_, '_, i64>,         // helper from big_space
+    grids: Grids<'_, '_>,         // helper from big_space
     // we need the entity id, the cell & the local transform
-    camera_q: Query<(Entity, &GridCell<i64>, &Transform, &CameraController)>,
+    camera_q: Query<(Entity, &GridCell, &Transform, &CameraController)>,
     mut ui_q:  Query<&mut Text, With<SpeedDisplay>>,
 ) {
     let Ok((cam_ent, cell, tf, ctrl)) = camera_q.get_single() else { return };

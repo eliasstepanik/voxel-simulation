@@ -29,14 +29,14 @@ pub fn setup(
         SphereMeshBuilder::new(radius, SphereKind::Ico { subdivisions: 100 })
             .build(),
     );
-    let material_handle = materials.add(StandardMaterial::from(Color::rgb(0.3, 0.6, 1.0)));
+    let material_handle = materials.add(StandardMaterial::from(Color::srgb(0.3, 0.6, 1.0)));
 
     commands.entity(root.0).with_children(|parent| {
         parent.spawn((
             Name::new("Planet"),
             Mesh3d(sphere_mesh.clone()),
             MeshMaterial3d(material_handle),
-            GridCell::<i64>::ZERO,
+            GridCell::ZERO,
             Transform::default(),
             PlanetMaker,
             Wireframe,

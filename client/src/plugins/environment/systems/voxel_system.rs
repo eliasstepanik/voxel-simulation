@@ -30,10 +30,10 @@ pub fn setup(
         }
     } else {
         let mut tree = SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false);
-        let color = Color::rgb(0.2, 0.8, 0.2);
+        let color = Color::srgb(0.2, 0.8, 0.2);
         // How many random spheres?
         /*const NUM_SPHERES: usize = 5;
-        let mut rng = thread_rng();
+        let mut rng = threald_rng();
 
         for _ in 0..NUM_SPHERES {
             let center = Vec3::new(

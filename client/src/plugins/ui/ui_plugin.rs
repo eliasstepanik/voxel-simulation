@@ -1,6 +1,5 @@
 use crate::plugins::ui::systems::ui_system::*;
 use bevy::app::{App, FixedUpdate, Plugin, PreUpdate, Startup};
-use bevy::prelude::IntoSystemConfigs;
 
 pub struct UiPlugin;
 impl Plugin for UiPlugin {

@@ -64,10 +64,12 @@ fn log_mesh_count(meshes: Res<Assets<Mesh>>, time: Res<Time>) {
     }
 }
 
-fn should_visualize_octree(octree_query: Query<&SparseVoxelOctree>,) -> bool {
-    octree_query.single().show_wireframe
+fn should_visualize_octree(octree_query: Query<&SparseVoxelOctree>) -> bool {
+    let Ok(octree) = octree_query.get_single() else { return false };
+    octree.show_wireframe
 }
 
-fn should_draw_grid(octree_query: Query<&SparseVoxelOctree>,) -> bool {
-    octree_query.single().show_world_grid
+fn should_draw_grid(octree_query: Query<&SparseVoxelOctree>) -> bool {
+    let Ok(octree) = octree_query.get_single() else { return false };
+    octree.show_world_grid
 }
