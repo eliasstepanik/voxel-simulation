@@ -39,11 +39,11 @@ pub struct GpuMeshingWorker;
 impl ComputeWorker for GpuMeshingWorker {
     fn build(world: &mut World) -> AppComputeWorker<Self> {
         AppComputeWorkerBuilder::new(world)
-            .add_storage::<u32>("voxels", &[0u32; 1])
+            .add_storage("voxels", &[0u32; 1])
             .add_uniform("params", &Params::default())
-            .add_storage::<VertexGpu>("vertices", &[VertexGpu::default(); 1])
-            .add_storage::<u32>("indices", &[0u32; 1])
-            .add_storage::<u32>("counts", &[0u32; 2])
+            .add_storage("vertices", &[VertexGpu::default(); 1])
+            .add_storage("indices", &[0u32; 1])
+            .add_storage("counts", &[0u32; 2])
             .add_pass::<GreedyMeshingShader>(
                 [1, 1, 1],
                 &["voxels", "params", "vertices", "indices", "counts"],
