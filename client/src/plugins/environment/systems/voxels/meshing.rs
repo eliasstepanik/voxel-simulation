@@ -419,7 +419,6 @@ pub(crate) fn mesh_chunk(
                     }
                 }
             }
-            }
 
             // Greedy merge the mask into maximal rectangles.
             for u0 in 0..N {
@@ -428,8 +427,6 @@ pub(crate) fn mesh_chunk(
                         continue;
                     }
                     let Some(tex_id) = mask[idx(u0, v0)] else { continue };
-                        continue;
-                    }
 
                     // Determine the rectangle width.
                     let mut width = 1;
