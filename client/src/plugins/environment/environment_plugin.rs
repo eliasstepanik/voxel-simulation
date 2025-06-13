@@ -4,7 +4,6 @@ use crate::plugins::environment::systems::voxels::meshing_gpu::{
     GpuMeshingWorker, queue_gpu_meshing,
 };
 use bevy_app_compute::prelude::{AppComputePlugin, AppComputeWorkerPlugin};
-use crate::plugins::environment::systems::voxels::queue_systems;
 use crate::plugins::environment::systems::voxels::queue_systems::process_chunk_queue;
 use crate::plugins::environment::systems::voxels::visibility_gpu::{
     enqueue_visible_chunks_gpu, GpuVisibilityWorker,
@@ -14,7 +13,7 @@ use crate::plugins::environment::systems::voxels::structure::{
     ChunkBudget, ChunkCullingCfg, ChunkQueue, MeshBufferPool, PrevCameraChunk, SparseVoxelOctree,
     SpawnedChunks,
 };
-use bevy::app::{App, Plugin, PreStartup, PreUpdate, Startup};
+use bevy::app::{App, Plugin, Startup};
 use bevy::prelude::*;
 
 pub struct EnvironmentPlugin;

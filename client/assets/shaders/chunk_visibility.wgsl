@@ -2,9 +2,9 @@
 // Input arrays must match in length and are processed per invocation.
 
 struct Params {
-    centre: vec3<i32>;
-    radius: i32;
+    centre_radius: vec4<i32>;
     count: u32;
+    _pad: u32;
 };
 
 @group(0) @binding(0) var<storage, read> occupied: array<vec3<i32>>;
@@ -19,10 +19,12 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     if idx >= params.count { return; }
     let key = occupied[idx];
     if spawned[idx] != 0u { return; }
-    let dx = key.x - params.centre.x;
-    let dy = key.y - params.centre.y;
-    let dz = key.z - params.centre.z;
-    if dx*dx + dy*dy + dz*dz <= params.radius * params.radius {
+    let centre = params.centre_radius.xyz;
+    let radius = params.centre_radius.w;
+    let dx = key.x - centre.x;
+    let dy = key.y - centre.y;
+    let dz = key.z - centre.z;
+    if dx*dx + dy*dy + dz*dz <= radius * radius {
         let i = atomicAdd(&out_count, 1u);
         out_keys[i] = key;
     }
