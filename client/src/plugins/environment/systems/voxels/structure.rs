@@ -20,13 +20,26 @@ where
 }
 
 /// Represents a single voxel with a color.
-#[derive(Debug, Clone, Copy, Component, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Component, PartialEq, Serialize, Deserialize)]
 pub struct Voxel {
     #[serde(
         serialize_with = "serialize_color",
         deserialize_with = "deserialize_color"
     )]
     pub color: Color,
+    /// Indexes into the texture atlas for the six faces in the order
+    /// left, right, bottom, top, back, front.
+    #[serde(default)]
+    pub textures: [usize; 6],
+}
+
+impl Default for Voxel {
+    fn default() -> Self {
+        Self {
+            color: Color::WHITE,
+            textures: [0; 6],
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -77,8 +90,8 @@ impl OctreeNode {
 
 impl Voxel {
     /// Creates a new empty octree node.
-    pub fn new(color: Color) -> Self {
-        Self { color }
+    pub fn new(color: Color, textures: [usize; 6]) -> Self {
+        Self { color, textures }
     }
 }
 

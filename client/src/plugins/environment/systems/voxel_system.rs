@@ -89,7 +89,7 @@ pub fn generate_voxel_sphere_parallel(
                         center.y + iy as f32 * step,
                         center.z + iz as f32 * step,
                     );
-                    (pos, Voxel { color })
+                    (pos, Voxel { color, textures: [0; 6] })
                 }).collect::<Vec<_>>()
             })
         })
@@ -133,6 +133,7 @@ fn generate_voxel_sphere(
                     // Insert the voxel
                     let voxel = Voxel {
                         color: voxel_color,
+                        textures: [0; 6],
                     };
                     octree.insert(position, voxel);
                 }
@@ -174,6 +175,7 @@ fn generate_voxel_rect(
                 // Insert the voxel
                 let voxel = Voxel {
                     color: voxel_color,
+                    textures: [0; 6],
                 };
                 octree.insert(position, voxel);
             }
@@ -209,6 +211,7 @@ fn generate_large_plane(
             // Insert the voxel
             let voxel = Voxel {
                 color,
+                textures: [0; 6],
             };
             octree.insert(position, voxel);
         }
@@ -251,7 +254,7 @@ pub fn generate_solid_plane_with_noise(
                     z * step,
                 );
 
-                let voxel = Voxel { color };
+                let voxel = Voxel { color, textures: [0; 6] };
                 octree.insert(position, voxel);
             }
         }

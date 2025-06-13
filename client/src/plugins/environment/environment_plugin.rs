@@ -9,6 +9,7 @@ use crate::plugins::environment::systems::voxels::queue_systems::{
     enqueue_visible_chunks, process_chunk_queue,
 };
 use crate::plugins::environment::systems::voxels::render_chunks::rebuild_dirty_chunks;
+use crate::plugins::environment::systems::voxels::atlas::{VoxelTextureAtlas};
 use crate::plugins::environment::systems::voxels::structure::{
     ChunkBudget, ChunkCullingCfg, ChunkQueue, MeshBufferPool, PrevCameraChunk, SparseVoxelOctree,
     SpawnedChunks,
@@ -22,6 +23,7 @@ impl Plugin for EnvironmentPlugin {
         app.add_systems(
             Startup,
             (
+                setup_texture_atlas,
                 crate::plugins::environment::systems::camera_system::setup,
                 crate::plugins::environment::systems::environment_system::setup
                     .after(crate::plugins::environment::systems::camera_system::setup),
@@ -88,4 +90,9 @@ fn should_draw_grid(octree_query: Query<&SparseVoxelOctree>) -> bool {
         return false;
     };
     octree.show_world_grid
+}
+
+fn setup_texture_atlas(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
+    let atlas = VoxelTextureAtlas::generate(&mut images);
+    commands.insert_resource(atlas);
 }
