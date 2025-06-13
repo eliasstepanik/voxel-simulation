@@ -1,5 +1,5 @@
 use crate::plugins::big_space::big_space_plugin::RootGrid;
-use crate::plugins::environment::systems::voxels::meshing::mesh_chunk;
+use crate::plugins::environment::systems::voxels::meshing_gpu::mesh_chunk_gpu;
 use crate::plugins::environment::systems::voxels::structure::*;
 use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
@@ -23,7 +23,7 @@ pub fn rebuild_dirty_chunks(
         &ChunkLod,
     )>,
     mut spawned: ResMut<SpawnedChunks>,
-    mut pool: ResMut<MeshBufferPool>,
+    mut worker: ResMut<AppComputeWorker<GpuMeshingWorker>>,
     root: Res<RootGrid>,
 ) {
     // map ChunkKey → (entity, mesh-handle, material-handle)
@@ -87,7 +87,7 @@ pub fn rebuild_dirty_chunks(
         for (key, buf, origin, step, lod) in bufs {
             if let Some((ent, mesh_h, _mat_h, _)) = existing.get(&key).cloned() {
                 // update mesh in-place; keeps old asset id
-                match mesh_chunk(&buf, origin, step, &tree, &mut pool) {
+                match mesh_chunk_gpu(worker.as_mut(), &buf, origin, step) {
                     Some(new_mesh) => {
                         if let Some(mesh) = meshes.get_mut(&mesh_h) {
                             *mesh = new_mesh;
@@ -100,7 +100,7 @@ pub fn rebuild_dirty_chunks(
                         spawned.0.remove(&key);
                     }
                 }
-            } else if let Some(mesh) = mesh_chunk(&buf, origin, step, &tree, &mut pool) {
+            } else if let Some(mesh) = mesh_chunk_gpu(worker.as_mut(), &buf, origin, step) {
                 // spawn brand-new chunk only if mesh has faces
                 let mesh_h = meshes.add(mesh);
                 let mat_h = materials.add(StandardMaterial::default());
