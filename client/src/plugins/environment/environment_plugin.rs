@@ -5,8 +5,9 @@ use crate::plugins::environment::systems::voxels::meshing_gpu::{
 };
 use bevy_app_compute::prelude::{AppComputePlugin, AppComputeWorkerPlugin};
 use crate::plugins::environment::systems::voxels::queue_systems;
-use crate::plugins::environment::systems::voxels::queue_systems::{
-    enqueue_visible_chunks, process_chunk_queue,
+use crate::plugins::environment::systems::voxels::queue_systems::process_chunk_queue;
+use crate::plugins::environment::systems::voxels::visibility_gpu::{
+    enqueue_visible_chunks_gpu, GpuVisibilityWorker,
 };
 use crate::plugins::environment::systems::voxels::render_chunks::rebuild_dirty_chunks;
 use crate::plugins::environment::systems::voxels::structure::{
@@ -30,6 +31,7 @@ impl Plugin for EnvironmentPlugin {
         );
         app.add_plugins(AppComputePlugin);
         app.add_plugins(AppComputeWorkerPlugin::<GpuMeshingWorker>::default());
+        app.add_plugins(AppComputeWorkerPlugin::<GpuVisibilityWorker>::default());
 
         let view_distance_chunks = 100;
         app.insert_resource(ChunkCullingCfg {
@@ -52,8 +54,8 @@ impl Plugin for EnvironmentPlugin {
                 Update,
                 (
                     /* ---------- culling & streaming ---------- */
-                    enqueue_visible_chunks,
-                    process_chunk_queue.after(enqueue_visible_chunks),
+                    enqueue_visible_chunks_gpu,
+                    process_chunk_queue.after(enqueue_visible_chunks_gpu),
                     update_chunk_lods.after(process_chunk_queue),
                     rebuild_dirty_chunks.after(process_chunk_queue), // 4.  (re)mesh dirty chunks
                     queue_gpu_meshing.after(rebuild_dirty_chunks),
