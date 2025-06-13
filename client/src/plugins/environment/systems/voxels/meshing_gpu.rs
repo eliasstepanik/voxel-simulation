@@ -1,11 +1,10 @@
 use bevy::prelude::*;
 use bevy_app_compute::prelude::*;
-use bytemuck::{Pod, Zeroable};
 
 use super::structure::{MeshBufferPool, SparseVoxelOctree};
 
 #[repr(C)]
-#[derive(ShaderType, Copy, Clone, Pod, Zeroable, Default)]
+#[derive(ShaderType, Copy, Clone, Default)]
 pub struct Params {
     pub origin: Vec3,
     pub step: f32,
@@ -16,7 +15,7 @@ pub struct Params {
 }
 
 #[repr(C)]
-#[derive(ShaderType, Copy, Clone, Pod, Zeroable, Default)]
+#[derive(ShaderType, Copy, Clone, Default)]
 pub struct VertexGpu {
     pub pos: Vec3,
     pub normal: Vec3,
