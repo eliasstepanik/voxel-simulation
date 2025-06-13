@@ -12,7 +12,7 @@ impl Plugin for AppPlugin {
         app.add_plugins(crate::plugins::input::input_plugin::InputPlugin);
         app.add_plugins(WireframePlugin::default());
 
-        app.add_systems(Update, (debug_gizmos));
+        app.add_systems(Update, debug_gizmos);
         app.register_type::<Option<Handle<Image>>>();
         app.register_type::<AlphaMode>();
     }

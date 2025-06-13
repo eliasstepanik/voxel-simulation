@@ -1,4 +1,3 @@
-use bevy::color::palettes::css::{BLUE, GREEN, RED};
 use bevy::prelude::*;
 
 pub fn debug_gizmos(mut gizmos: Gizmos) {

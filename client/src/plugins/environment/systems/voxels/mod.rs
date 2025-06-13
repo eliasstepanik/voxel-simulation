@@ -4,8 +4,10 @@ pub mod octree;
 pub mod structure;
 
 mod chunk;
-mod meshing;
-pub mod render_chunks;
 pub mod culling;
-pub mod queue_systems;
 pub mod lod;
+mod meshing;
+pub mod meshing_gpu;
+pub mod visibility_gpu;
+pub mod queue_systems;
+pub mod render_chunks;

@@ -1,27 +1,33 @@
-use std::collections::HashMap;
-use std::fmt::format;
+use crate::plugins::big_space::big_space_plugin::RootGrid;
+use crate::plugins::environment::systems::voxels::meshing_gpu::{
+    mesh_chunk_gpu, GpuMeshingWorker,
+};
+use crate::plugins::environment::systems::voxels::structure::*;
+use bevy_app_compute::prelude::AppComputeWorker;
 use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
 use bevy::render::mesh::Mesh;
 use big_space::prelude::GridCell;
 use itertools::Itertools;
-use crate::plugins::big_space::big_space_plugin::RootGrid;
-use crate::plugins::environment::systems::voxels::meshing::mesh_chunk;
-use crate::plugins::environment::systems::voxels::structure::*;
+use std::collections::HashMap;
+use std::fmt::format;
 
 /// rebuilds meshes only for chunks flagged dirty by the octree
 pub fn rebuild_dirty_chunks(
-    mut commands : Commands,
-    mut octrees  : Query<&mut SparseVoxelOctree>,
-    mut meshes   : ResMut<Assets<Mesh>>,
+    mut commands: Commands,
+    mut octrees: Query<&mut SparseVoxelOctree>,
+    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    chunk_q      : Query<(Entity,
-                          &Chunk,
-                          &Mesh3d,
-                          &MeshMaterial3d<StandardMaterial>,
-                          &ChunkLod)>,
-    mut spawned  : ResMut<SpawnedChunks>,
-    root         : Res<RootGrid>,
+    chunk_q: Query<(
+        Entity,
+        &Chunk,
+        &Mesh3d,
+        &MeshMaterial3d<StandardMaterial>,
+        &ChunkLod,
+    )>,
+    mut spawned: ResMut<SpawnedChunks>,
+    mut worker: ResMut<AppComputeWorker<GpuMeshingWorker>>,
+    root: Res<RootGrid>,
 ) {
     // map ChunkKey → (entity, mesh-handle, material-handle)
     let existing: HashMap<ChunkKey, (Entity, Handle<Mesh>, Handle<StandardMaterial>, u32)> =
@@ -39,8 +45,7 @@ pub fn rebuild_dirty_chunks(
         let mut bufs = Vec::new();
         for key in tree.dirty_chunks.iter().copied() {
             let lod = existing.get(&key).map(|v| v.3).unwrap_or(0);
-            let mut buf =
-                [[[None; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize];
+            let mut buf = [[[None; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize];
 
             let half = tree.size * 0.5;
             let step = tree.get_spacing_at_depth(tree.max_depth);
@@ -85,7 +90,7 @@ pub fn rebuild_dirty_chunks(
         for (key, buf, origin, step, lod) in bufs {
             if let Some((ent, mesh_h, _mat_h, _)) = existing.get(&key).cloned() {
                 // update mesh in-place; keeps old asset id
-                match mesh_chunk(&buf, origin, step, &tree) {
+                match mesh_chunk_gpu(worker.as_mut(), &buf, origin, step) {
                     Some(new_mesh) => {
                         if let Some(mesh) = meshes.get_mut(&mesh_h) {
                             *mesh = new_mesh;
@@ -98,10 +103,10 @@ pub fn rebuild_dirty_chunks(
                         spawned.0.remove(&key);
                     }
                 }
-            } else if let Some(mesh) = mesh_chunk(&buf, origin, step, &tree) {
+            } else if let Some(mesh) = mesh_chunk_gpu(worker.as_mut(), &buf, origin, step) {
                 // spawn brand-new chunk only if mesh has faces
                 let mesh_h = meshes.add(mesh);
-                let mat_h  = materials.add(StandardMaterial::default());
+                let mat_h = materials.add(StandardMaterial::default());
 
                 commands.entity(root.0).with_children(|p| {
                     let e = p
@@ -110,7 +115,11 @@ pub fn rebuild_dirty_chunks(
                             MeshMaterial3d(mat_h.clone()),
                             Transform::default(),
                             GridCell::ZERO,
-                            Chunk { key, voxels: Vec::new(), dirty: false },
+                            Chunk {
+                                key,
+                                voxels: Vec::new(),
+                                dirty: false,
+                            },
                             ChunkLod(lod),
                             /*Wireframe,*/
                         ))
