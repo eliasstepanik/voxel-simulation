@@ -3,8 +3,8 @@
 
 struct Params {
     centre_radius: vec4<i32>;
+    @align(16)
     count: u32;
-    _pad: u32;
 };
 
 @group(0) @binding(0) var<storage, read> occupied: array<vec3<i32>>;

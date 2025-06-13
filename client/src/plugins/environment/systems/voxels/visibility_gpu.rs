@@ -9,8 +9,8 @@ use crate::plugins::environment::systems::voxels::helper::world_to_chunk;
 pub struct Params {
     /// Camera chunk center in xyz and view radius in w.
     pub centre_radius: IVec4,
+    #[align(16)]
     pub count: u32,
-    pub _pad: u32,
 }
 
 #[derive(TypePath)]
@@ -80,7 +80,6 @@ pub fn enqueue_visible_chunks_gpu(
             cfg.view_distance_chunks,
         ),
         count: occupied.len() as u32,
-        _pad: 0,
     };
     worker.write("params", &params);
 
