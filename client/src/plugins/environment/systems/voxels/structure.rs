@@ -1,32 +1,10 @@
-use bevy::color::Color;
 use bevy::prelude::*;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-fn serialize_color<S>(color: &Color, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let [r, g, b, a] = color.to_linear().to_f32_array();
-    [r, g, b, a].serialize(serializer)
-}
-
-fn deserialize_color<'de, D>(deserializer: D) -> Result<Color, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let arr: [f32; 4] = Deserialize::deserialize(deserializer)?;
-    Ok(Color::linear_rgba(arr[0], arr[1], arr[2], arr[3]))
-}
-
-/// Represents a single voxel with a color.
+/// Represents a single voxel with texture indices for each face.
 #[derive(Debug, Clone, Copy, Component, PartialEq, Serialize, Deserialize)]
 pub struct Voxel {
-    #[serde(
-        serialize_with = "serialize_color",
-        deserialize_with = "deserialize_color"
-    )]
-    pub color: Color,
     /// Indexes into the texture atlas for the six faces in the order
     /// left, right, bottom, top, back, front.
     #[serde(default)]
@@ -35,10 +13,7 @@ pub struct Voxel {
 
 impl Default for Voxel {
     fn default() -> Self {
-        Self {
-            color: Color::WHITE,
-            textures: [0; 6],
-        }
+        Self { textures: [0; 6] }
     }
 }
 
@@ -90,8 +65,8 @@ impl OctreeNode {
 
 impl Voxel {
     /// Creates a new empty octree node.
-    pub fn new(color: Color, textures: [usize; 6]) -> Self {
-        Self { color, textures }
+    pub fn new(textures: [usize; 6]) -> Self {
+        Self { textures }
     }
 }
 

@@ -1,6 +1,6 @@
 use bevy::asset::RenderAssetUsages;
 use bevy::prelude::*;
-use bevy::render::texture::{Extent3d, TextureDimension, TextureFormat};
+use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 
 /// Configuration and handle for the voxel texture atlas.
 #[derive(Resource, Clone)]
