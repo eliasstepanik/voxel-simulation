@@ -1,3 +1,4 @@
+use bevy::asset::RenderAssetUsages;
 use bevy::prelude::*;
 use bevy::render::texture::{Extent3d, TextureDimension, TextureFormat};
 
@@ -19,12 +20,12 @@ impl VoxelTextureAtlas {
         let height = tile_size * rows as u32;
         let mut data = vec![0u8; (width * height * 4) as usize];
         let colors = [
-            [255, 0, 0, 255],    // red
-            [0, 255, 0, 255],    // green
-            [0, 0, 255, 255],    // blue
-            [255, 255, 0, 255],  // yellow
-            [255, 0, 255, 255],  // magenta
-            [0, 255, 255, 255],  // cyan
+            [255, 0, 0, 255],   // red
+            [0, 255, 0, 255],   // green
+            [0, 0, 255, 255],   // blue
+            [255, 255, 0, 255], // yellow
+            [255, 0, 255, 255], // magenta
+            [0, 255, 255, 255], // cyan
         ];
         for (i, col) in colors.iter().enumerate() {
             let cx = (i % columns) as u32 * tile_size;
@@ -37,13 +38,22 @@ impl VoxelTextureAtlas {
             }
         }
         let image = Image::new_fill(
-            Extent3d { width, height, depth_or_array_layers: 1 },
+            Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
             TextureDimension::D2,
             &data,
             TextureFormat::Rgba8UnormSrgb,
+            RenderAssetUsages::default(),
         );
         let handle = images.add(image);
-        Self { handle, columns, rows }
+        Self {
+            handle,
+            columns,
+            rows,
+        }
     }
 
     /// Compute UV coordinates for the given atlas index.
@@ -56,11 +66,6 @@ impl VoxelTextureAtlas {
         let v0 = row as f32 / rows;
         let u1 = (col + 1) as f32 / cols;
         let v1 = (row + 1) as f32 / rows;
-        [
-            [u0, v1],
-            [u1, v1],
-            [u1, v0],
-            [u0, v0],
-        ]
+        [[u0, v1], [u1, v1], [u1, v0], [u0, v0]]
     }
 }
