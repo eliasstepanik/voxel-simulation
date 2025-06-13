@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, Mesh, PrimitiveTopology, VertexAttributeValues};
+use bevy::asset::RenderAssetUsages;
 use bevy_app_compute::prelude::*;
 use super::structure::{Voxel, CHUNK_SIZE};
 

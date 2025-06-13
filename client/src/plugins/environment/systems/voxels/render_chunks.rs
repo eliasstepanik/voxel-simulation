@@ -1,6 +1,9 @@
 use crate::plugins::big_space::big_space_plugin::RootGrid;
-use crate::plugins::environment::systems::voxels::meshing_gpu::mesh_chunk_gpu;
+use crate::plugins::environment::systems::voxels::meshing_gpu::{
+    mesh_chunk_gpu, GpuMeshingWorker,
+};
 use crate::plugins::environment::systems::voxels::structure::*;
+use bevy_app_compute::prelude::AppComputeWorker;
 use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
 use bevy::render::mesh::Mesh;

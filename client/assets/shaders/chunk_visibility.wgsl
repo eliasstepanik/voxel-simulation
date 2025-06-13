@@ -7,9 +7,9 @@ struct Params {
     count: u32;
 };
 
-@group(0) @binding(0) var<storage, read> occupied: array<vec3<i32>>;
+@group(0) @binding(0) var<storage, read> occupied: array<vec4<i32>>;
 @group(0) @binding(1) var<storage, read> spawned: array<u32>;
-@group(0) @binding(2) var<storage, read_write> out_keys: array<vec3<i32>>;
+@group(0) @binding(2) var<storage, read_write> out_keys: array<vec4<i32>>;
 @group(0) @binding(3) var<storage, read_write> out_count: atomic<u32>;
 @group(0) @binding(4) var<uniform> params: Params;
 
@@ -17,7 +17,8 @@ struct Params {
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let idx = id.x;
     if idx >= params.count { return; }
-    let key = occupied[idx];
+    let key4 = occupied[idx];
+    let key = key4.xyz;
     if spawned[idx] != 0u { return; }
     let centre = params.centre_radius.xyz;
     let radius = params.centre_radius.w;
@@ -26,6 +27,6 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let dz = key.z - centre.z;
     if dx*dx + dy*dy + dz*dz <= radius * radius {
         let i = atomicAdd(&out_count, 1u);
-        out_keys[i] = key;
+        out_keys[i] = vec4<i32>(key, 0);
     }
 }
