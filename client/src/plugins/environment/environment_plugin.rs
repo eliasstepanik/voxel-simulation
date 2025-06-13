@@ -1,5 +1,6 @@
 use crate::plugins::environment::systems::voxels::debug::{draw_grid, visualize_octree_system};
 use crate::plugins::environment::systems::voxels::lod::update_chunk_lods;
+use crate::plugins::environment::systems::voxels::meshing_gpu::GpuMeshingPlugin;
 use crate::plugins::environment::systems::voxels::queue_systems;
 use crate::plugins::environment::systems::voxels::queue_systems::{
     enqueue_visible_chunks, process_chunk_queue,
@@ -24,6 +25,7 @@ impl Plugin for EnvironmentPlugin {
                 crate::plugins::environment::systems::voxel_system::setup,
             ),
         );
+        app.add_plugins(GpuMeshingPlugin);
 
         let view_distance_chunks = 100;
         app.insert_resource(ChunkCullingCfg {
