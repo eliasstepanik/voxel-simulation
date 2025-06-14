@@ -113,11 +113,11 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                         // Compute base world-space position.
                         var base = params.origin;
                         if axis == 0u {
-                            base = base + vec3<f32>(f32(slice) + (dir > 0 ? 1.0 : 0.0), f32(u0), f32(v0)) * params.step;
+                            base = base + vec3<f32>(f32(slice) + select(0.0, 1.0, dir > 0), f32(u0), f32(v0)) * params.step;
                         } else if axis == 1u {
-                            base = base + vec3<f32>(f32(v0), f32(slice) + (dir > 0 ? 1.0 : 0.0), f32(u0)) * params.step;
+                            base = base + vec3<f32>(f32(v0), f32(slice) + select(0.0, 1.0, dir > 0), f32(u0)) * params.step;
                         } else {
-                            base = base + vec3<f32>(f32(u0), f32(v0), f32(slice) + (dir > 0 ? 1.0 : 0.0)) * params.step;
+                            base = base + vec3<f32>(f32(u0), f32(v0), f32(slice) + select(0.0, 1.0, dir > 0)) * params.step;
                         }
 
                         let size = vec2<f32>(f32(width) * params.step, f32(height) * params.step);
