@@ -98,6 +98,3 @@ fn register_platform_plugins(app: &mut App) {
         }));
     }
 }
-fn should_display_inspector(inspector_visible: Res<InspectorVisible>) -> bool {
-    inspector_visible.0
-}

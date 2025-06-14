@@ -33,6 +33,7 @@ pub(crate) fn setup(
             GlobalTransform::default(),
             DirectionalLight {
                 shadows_enabled: true,
+                illuminance: 1.0,
                 ..default()
             },
         ));

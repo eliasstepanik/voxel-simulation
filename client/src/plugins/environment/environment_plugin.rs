@@ -39,7 +39,7 @@ impl Plugin for EnvironmentPlugin {
         });
         app.insert_resource(ChunkBudget { per_frame: 20 });
         app.init_resource::<PrevCameraChunk>();
-        app.add_systems(Update, log_mesh_count);
+       /* app.add_systems(Update, log_mesh_count);*/
         app
             // ------------------------------------------------------------------------
             // resources
@@ -72,11 +72,11 @@ impl Plugin for EnvironmentPlugin {
     }
 }
 
-fn log_mesh_count(meshes: Res<Assets<Mesh>>, time: Res<Time>) {
+/*fn log_mesh_count(meshes: Res<Assets<Mesh>>, time: Res<Time>) {
     if time.delta_secs_f64() as i32 % 5 == 0 {
         info!("meshes: {}", meshes.len());
     }
-}
+}*/
 
 fn should_visualize_octree(octree_query: Query<&SparseVoxelOctree>) -> bool {
     let Ok(octree) = octree_query.get_single() else {
