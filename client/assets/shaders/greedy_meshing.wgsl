@@ -21,7 +21,7 @@ struct Vertex {
 @group(0) @binding(1) var<uniform> params: Params;
 @group(0) @binding(2) var<storage, read_write> vertices: array<Vertex>;
 @group(0) @binding(3) var<storage, read_write> indices: array<u32>;
-@group(0) @binding(4) var<storage, read_write> counts: atomic<u32>;
+@group(0) @binding(4) var<storage, read_write> counts: array<atomic<u32>, 2>;
 
 const N: u32 = 16u;
 
