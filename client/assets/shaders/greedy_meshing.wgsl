@@ -146,10 +146,10 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                         let p3 = base + v_unit * size.y;
 
                         let vi = atomicAdd(&counts[0], 4u);
-                        vertices[vi] = Vertex(pos: p0, normal: normal, uv: vec2<f32>(0.0, 1.0));
-                        vertices[vi + 1u] = Vertex(pos: p1, normal: normal, uv: vec2<f32>(1.0, 1.0));
-                        vertices[vi + 2u] = Vertex(pos: p2, normal: normal, uv: vec2<f32>(1.0, 0.0));
-                        vertices[vi + 3u] = Vertex(pos: p3, normal: normal, uv: vec2<f32>(0.0, 0.0));
+                        vertices[vi] = Vertex(p0, normal, vec2<f32>(0.0, 1.0));
+                        vertices[vi + 1u] = Vertex(p1, normal, vec2<f32>(1.0, 1.0));
+                        vertices[vi + 2u] = Vertex(p2, normal, vec2<f32>(1.0, 0.0));
+                        vertices[vi + 3u] = Vertex(p3, normal, vec2<f32>(0.0, 0.0));
 
                         let ii = atomicAdd(&counts[1], 6u);
                         if dir > 0 {
