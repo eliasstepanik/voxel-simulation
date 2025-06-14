@@ -86,15 +86,20 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                         }
 
                         var height: u32 = 1u;
-                        outer: loop {
+                        loop {
                             if v0 + height >= N {
                                 break;
                             }
+                            var can_expand: bool = true;
                             for (var du: u32 = 0u; du < width; du = du + 1u) {
                                 let idx = (u0 + du) * N + v0 + height;
                                 if !mask[idx] || visited[idx] {
-                                    break outer;
+                                    can_expand = false;
+                                    break;
                                 }
+                            }
+                            if !can_expand {
+                                break;
                             }
                             height = height + 1u;
                         }
