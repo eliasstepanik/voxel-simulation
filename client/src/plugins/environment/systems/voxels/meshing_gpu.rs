@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_app_compute::prelude::*;
 
-use super::structure::{MeshBufferPool, SparseVoxelOctree};
+use super::structure::{CHUNK_SIZE, MeshBufferPool, SparseVoxelOctree};
 
 #[repr(C)]
 #[derive(ShaderType, Copy, Clone, Default)]
@@ -22,6 +22,11 @@ pub struct VertexGpu {
     pub uv: Vec2,
 }
 
+const MAX_VOXELS: usize = (CHUNK_SIZE as usize) * (CHUNK_SIZE as usize) * (CHUNK_SIZE as usize);
+const MAX_QUADS: usize = MAX_VOXELS * 6;
+const MAX_VERTICES: usize = MAX_QUADS * 4;
+const MAX_INDICES: usize = MAX_QUADS * 6;
+
 #[derive(TypePath)]
 struct GreedyMeshingShader;
 
@@ -37,11 +42,16 @@ pub struct GpuMeshingWorker;
 
 impl ComputeWorker for GpuMeshingWorker {
     fn build(world: &mut World) -> AppComputeWorker<Self> {
+        // Allocate large temporary arrays on the heap to avoid stack overflows
+        let voxels = Box::new([0u32; MAX_VOXELS]);
+        let vertices = Box::new([VertexGpu::default(); MAX_VERTICES]);
+        let indices = Box::new([0u32; MAX_INDICES]);
+
         AppComputeWorkerBuilder::new(world)
-            .add_storage("voxels", &[0u32; 1])
+            .add_storage("voxels", voxels.as_ref())
             .add_uniform("params", &Params::default())
-            .add_storage("vertices", &[VertexGpu::default(); 1])
-            .add_storage("indices", &[0u32; 1])
+            .add_storage("vertices", vertices.as_ref())
+            .add_storage("indices", indices.as_ref())
             .add_storage("counts", &[0u32; 2])
             .add_pass::<GreedyMeshingShader>(
                 [1, 1, 1],
