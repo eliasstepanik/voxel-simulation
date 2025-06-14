@@ -119,7 +119,7 @@ pub fn voxel_system(
                                 let hit_position = Vec3::new(hit_x as f32, hit_y as f32, hit_z as f32);
                                 let epsilon = voxel_size * 0.1;
                                 let offset = hit_position + normal * Vec3::splat(epsilon);
-                                octree.insert_sphere(offset, EDIT_SPHERE_RADIUS, Voxel::grass_block());
+                                octree.insert_sphere(offset, EDIT_SPHERE_RADIUS, Voxel::random_sides());
                             }
                         }
                     }
