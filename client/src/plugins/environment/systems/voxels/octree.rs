@@ -167,6 +167,54 @@ impl SparseVoxelOctree {
         }
     }
 
+    /// Insert a sphere of voxels with the given radius (in voxels) and center.
+    pub fn insert_sphere(&mut self, center: Vec3, radius: i32, voxel: Voxel) {
+        let step = self.get_spacing_at_depth(self.max_depth);
+        let r2 = radius * radius;
+
+        for x in -radius..=radius {
+            let dx2 = x * x;
+            for y in -radius..=radius {
+                let dy2 = y * y;
+                for z in -radius..=radius {
+                    let dz2 = z * z;
+                    if dx2 + dy2 + dz2 <= r2 {
+                        let pos = Vec3::new(
+                            center.x + x as f32 * step,
+                            center.y + y as f32 * step,
+                            center.z + z as f32 * step,
+                        );
+                        self.insert(pos, voxel);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Remove all voxels inside a sphere with the given radius (in voxels).
+    pub fn remove_sphere(&mut self, center: Vec3, radius: i32) {
+        let step = self.get_spacing_at_depth(self.max_depth);
+        let r2 = radius * radius;
+
+        for x in -radius..=radius {
+            let dx2 = x * x;
+            for y in -radius..=radius {
+                let dy2 = y * y;
+                for z in -radius..=radius {
+                    let dz2 = z * z;
+                    if dx2 + dy2 + dz2 <= r2 {
+                        let pos = Vec3::new(
+                            center.x + x as f32 * step,
+                            center.y + y as f32 * step,
+                            center.z + z as f32 * step,
+                        );
+                        self.remove(pos);
+                    }
+                }
+            }
+        }
+    }
+
     fn remove_recursive(node: &mut OctreeNode, x: f32, y: f32, z: f32, depth: u32) -> bool {
         if depth == 0 {
             if node.voxel.is_some() {

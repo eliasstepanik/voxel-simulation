@@ -4,6 +4,20 @@ use crate::plugins::environment::systems::voxels::structure::*;
 use bevy::prelude::*;
 use std::path::Path;
 
+#[derive(Resource, Clone, Copy, PartialEq, Eq)]
+pub enum VoxelEditMode {
+    Single,
+    Sphere,
+}
+
+impl Default for VoxelEditMode {
+    fn default() -> Self {
+        Self::Single
+    }
+}
+
+const EDIT_SPHERE_RADIUS: i32 = 8;
+
 ///TODO
 pub fn voxel_system(
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -12,6 +26,7 @@ pub fn voxel_system(
 
     mut query: Query<(&mut Transform, &mut CameraController)>,
     mut windows: Query<&mut Window>,
+    mut edit_mode: ResMut<VoxelEditMode>,
 ) {
     let Ok(mut window) = windows.get_single_mut() else {
         return;
@@ -47,22 +62,13 @@ pub fn voxel_system(
             }
         }
     }
-    /*    if keyboard_input.just_pressed(KeyCode::F5){
-        let path = Path::new("octree.bin");
-        if path.exists() {
-            let path = Path::new("octree.bin");
 
-            let mut octree = if path.exists() {
-                match SparseVoxelOctree::load_from_file(path) {
-                    Ok(tree) => tree,
-                    Err(err) => {
-                        error!("failed to load octree: {err}");
-                    }
-                }
-            }
-
-        }
-    }*/
+    if keyboard_input.just_pressed(KeyCode::F5) {
+        *edit_mode = match *edit_mode {
+            VoxelEditMode::Single => VoxelEditMode::Sphere,
+            VoxelEditMode::Sphere => VoxelEditMode::Single,
+        };
+    }
 
     // =======================
     // 6) Building
@@ -85,28 +91,37 @@ pub fn voxel_system(
 
             for mut octree in octree_query.iter_mut() {
                 if let Some((hit_x, hit_y, hit_z, depth, normal)) = octree.raycast(&ray) {
-                    if mouse_button_input.just_pressed(MouseButton::Right) {
-                        let voxel_size = octree.get_spacing_at_depth(depth);
-                        let hit_position = Vec3::new(hit_x as f32, hit_y as f32, hit_z as f32);
-                        let epsilon = voxel_size * 0.1; // Adjust this value as needed (e.g., 0.1 times the voxel size)
-
-                        // Offset position by epsilon in the direction of the normal
-                        let offset_position = hit_position
-                            - (normal * Vec3::new(epsilon as f32, epsilon as f32, epsilon as f32));
-
-                        // Remove the voxel
-                        octree.remove(offset_position);
-                    } else if mouse_button_input.just_pressed(MouseButton::Left) {
-                        let voxel_size = octree.get_spacing_at_depth(depth);
-                        let hit_position = Vec3::new(hit_x as f32, hit_y as f32, hit_z as f32);
-                        let epsilon = voxel_size * 0.1; // Adjust this value as needed (e.g., 0.1 times the voxel size)
-
-                        // Offset position by epsilon in the direction of the normal
-                        let offset_position = hit_position
-                            + (normal * Vec3::new(epsilon as f32, epsilon as f32, epsilon as f32));
-
-                        // Insert the new voxel
-                        octree.insert(offset_position, Voxel::random_sides());
+                    match *edit_mode {
+                        VoxelEditMode::Single => {
+                            if mouse_button_input.just_pressed(MouseButton::Right) {
+                                let voxel_size = octree.get_spacing_at_depth(depth);
+                                let hit_position = Vec3::new(hit_x as f32, hit_y as f32, hit_z as f32);
+                                let epsilon = voxel_size * 0.1;
+                                let offset_position = hit_position - (normal * Vec3::splat(epsilon));
+                                octree.remove(offset_position);
+                            } else if mouse_button_input.just_pressed(MouseButton::Left) {
+                                let voxel_size = octree.get_spacing_at_depth(depth);
+                                let hit_position = Vec3::new(hit_x as f32, hit_y as f32, hit_z as f32);
+                                let epsilon = voxel_size * 0.1;
+                                let offset_position = hit_position + (normal * Vec3::splat(epsilon));
+                                octree.insert(offset_position, Voxel::random_sides());
+                            }
+                        }
+                        VoxelEditMode::Sphere => {
+                            if mouse_button_input.just_pressed(MouseButton::Right) {
+                                let voxel_size = octree.get_spacing_at_depth(depth);
+                                let hit_position = Vec3::new(hit_x as f32, hit_y as f32, hit_z as f32);
+                                let epsilon = voxel_size * 0.1;
+                                let offset = hit_position - normal * Vec3::splat(epsilon);
+                                octree.remove_sphere(offset, EDIT_SPHERE_RADIUS);
+                            } else if mouse_button_input.just_pressed(MouseButton::Left) {
+                                let voxel_size = octree.get_spacing_at_depth(depth);
+                                let hit_position = Vec3::new(hit_x as f32, hit_y as f32, hit_z as f32);
+                                let epsilon = voxel_size * 0.1;
+                                let offset = hit_position + normal * Vec3::splat(epsilon);
+                                octree.insert_sphere(offset, EDIT_SPHERE_RADIUS, Voxel::grass_block());
+                            }
+                        }
                     }
                 }
             }
