@@ -27,6 +27,7 @@ tools.
 - **F3** &ndash; Toggle world grid
 - **Q**  &ndash; Insert a red voxel at the crosshair
 - **F4** &ndash; Save the current octree to `octree.bin`
+- **F5** &ndash; Toggle sphere editing mode
 - **Escape** &ndash; Quit the application
 
 ## Running
