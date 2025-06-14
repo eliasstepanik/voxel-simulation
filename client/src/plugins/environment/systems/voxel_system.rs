@@ -77,7 +77,7 @@ pub fn generate_voxel_sphere_parallel(octree: &mut SparseVoxelOctree, center: Ve
                             center.y + iy as f32 * step,
                             center.z + iz as f32 * step,
                         );
-                        (pos, Voxel::grass_block())
+                        (pos, Voxel::random_sides())
                     })
                     .collect::<Vec<_>>()
             })
@@ -115,7 +115,7 @@ fn generate_voxel_sphere(octree: &mut SparseVoxelOctree, planet_radius: i32) {
                     let position = Vec3::new(wx, wy, wz);
 
                     // Insert the voxel
-                    let voxel = Voxel::grass_block();
+                    let voxel = Voxel::random_sides();
                     octree.insert(position, voxel);
                 }
             }
@@ -150,7 +150,7 @@ fn generate_voxel_rect(octree: &mut SparseVoxelOctree) {
                 let position = Vec3::new(wx, wy, wz);
 
                 // Insert the voxel
-                let voxel = Voxel::grass_block();
+                let voxel = Voxel::random_sides();
                 octree.insert(position, voxel);
             }
         }
@@ -178,7 +178,7 @@ fn generate_large_plane(octree: &mut SparseVoxelOctree, width: usize, depth: usi
             let position = Vec3::new(wx, wy, wz);
 
             // Insert the voxel
-            let voxel = Voxel::grass_block();
+            let voxel = Voxel::random_sides();
             octree.insert(position, voxel);
         }
     }
@@ -214,7 +214,7 @@ pub fn generate_solid_plane_with_noise(
             for iy in 0..=max_layer {
                 let position = Vec3::new(x * step, iy as f32 * step, z * step);
 
-                let voxel = Voxel::grass_block();
+                let voxel = Voxel::random_sides();
                 octree.insert(position, voxel);
             }
         }

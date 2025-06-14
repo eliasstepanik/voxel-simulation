@@ -84,16 +84,6 @@ impl Voxel {
         }
         Self { textures }
     }
-    
-    // Generate a simple grass block using the first three atlas indices.
-    /// Index 0: grass top, index 1: dirt (bottom), index 2: grass sides.
-    pub fn grass_block() -> Self {
-        let mut textures = [2usize; 6];
-        // Face order: left, right, bottom, top, back, front
-        textures[3] = 0; // top
-        textures[2] = 1; // bottom
-        Self { textures }
-    }
 }
 
 pub const NEIGHBOR_OFFSETS: [(f32, f32, f32); 6] = [
