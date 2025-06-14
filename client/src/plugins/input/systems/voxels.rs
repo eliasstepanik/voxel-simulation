@@ -36,7 +36,7 @@ pub fn voxel_system(
 
     if keyboard_input.just_pressed(KeyCode::KeyQ) && window.cursor_options.visible == false {
         for mut octree in octree_query.iter_mut() {
-            octree.insert(transform.translation, Voxel::random_sides());
+            octree.insert(transform.translation, Voxel::grass_block());
         }
     }
     if keyboard_input.just_pressed(KeyCode::F4) {
