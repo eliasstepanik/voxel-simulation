@@ -304,6 +304,10 @@ impl SparseVoxelOctree {
             | (((sy < 0.0) as usize) << 1)
             | (((sz < 0.0) as usize) << 2);
         self.root.children.as_mut().unwrap()[index] = old_root;
+
+        // Rebuild caches since chunk mapping changed
+        self.rebuild_cache();
+        self.dirty_chunks = self.occupied_chunks.clone();
     }
 
     /// Helper: Collect all voxels from a given octree node recursively.
