@@ -38,6 +38,8 @@ pub struct SparseVoxelOctree {
     pub root: OctreeNode,
     pub max_depth: u32,
     pub size: f32,
+    /// Center position of the octree in world space
+    pub center: Vec3,
     pub show_wireframe: bool,
     pub show_world_grid: bool,
 
@@ -47,6 +49,9 @@ pub struct SparseVoxelOctree {
     pub dirty_chunks: HashSet<ChunkKey>,
     #[serde(skip)]
     pub occupied_chunks: HashSet<ChunkKey>,
+    #[serde(skip)]
+    /// Number of voxels currently stored in the octree
+    pub voxel_count: usize,
 }
 
 impl OctreeNode {
