@@ -1,7 +1,7 @@
 use crate::plugins::environment::systems::voxels::helper::chunk_key_from_world;
 use crate::plugins::environment::systems::voxels::structure::{
-    AABB, CHUNK_SIZE, ChunkKey, DirtyVoxel, NEIGHBOR_OFFSETS, OctreeNode, Ray, SparseVoxelOctree,
-    Voxel,
+    ChunkKey, DirtyVoxel, OctreeNode, Ray, SparseVoxelOctree, Voxel, AABB, CHUNK_SIZE,
+    NEIGHBOR_OFFSETS,
 };
 use bevy::asset::Assets;
 use bevy::math::{DQuat, DVec3};
@@ -31,6 +31,7 @@ impl SparseVoxelOctree {
             dirty: Vec::new(),
             dirty_chunks: Default::default(),
             occupied_chunks: Default::default(),
+            voxel_count: 0,
         }
     }
     pub fn insert(&mut self, position: Vec3, voxel: Voxel) {
@@ -54,7 +55,11 @@ impl SparseVoxelOctree {
         self.mark_neighbor_chunks_dirty(position);
         self.occupied_chunks.insert(key);
 
+        let existed = self.get_voxel_at_world_coords(position).is_some();
         Self::insert_recursive(&mut self.root, aligned, voxel, self.max_depth);
+        if !existed {
+            self.voxel_count += 1;
+        }
     }
 
     fn insert_recursive(node: &mut OctreeNode, position: Vec3, voxel: Voxel, depth: u32) {
@@ -102,6 +107,7 @@ impl SparseVoxelOctree {
         self.dirty_chunks.insert(key);
         self.mark_neighbor_chunks_dirty(position);
 
+        let existed = self.get_voxel_at_world_coords(position).is_some();
         Self::remove_recursive(
             &mut self.root,
             aligned.x,
@@ -112,6 +118,9 @@ impl SparseVoxelOctree {
 
         if !self.chunk_has_any_voxel(key) {
             self.occupied_chunks.remove(&key);
+        }
+        if existed {
+            self.voxel_count = self.voxel_count.saturating_sub(1);
         }
     }
 
@@ -284,6 +293,7 @@ impl SparseVoxelOctree {
 
         // Reinsert each voxel from the old tree.
         let voxels = Self::collect_voxels_from_node(&old_root, old_size);
+        self.voxel_count = 0;
         for (world_pos, voxel, _depth) in voxels {
             self.insert(world_pos, voxel);
         }
@@ -538,6 +548,7 @@ impl SparseVoxelOctree {
         self.occupied_chunks.clear();
 
         let voxels = Self::collect_voxels_from_node(&self.root, self.size);
+        self.voxel_count = voxels.len();
         for (pos, _voxel, _depth) in voxels {
             let key = chunk_key_from_world(self, pos);
             self.occupied_chunks.insert(key);

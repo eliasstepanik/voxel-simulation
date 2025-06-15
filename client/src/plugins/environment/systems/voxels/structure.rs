@@ -47,6 +47,9 @@ pub struct SparseVoxelOctree {
     pub dirty_chunks: HashSet<ChunkKey>,
     #[serde(skip)]
     pub occupied_chunks: HashSet<ChunkKey>,
+    #[serde(skip)]
+    /// Number of voxels currently stored in the octree
+    pub voxel_count: usize,
 }
 
 impl OctreeNode {
