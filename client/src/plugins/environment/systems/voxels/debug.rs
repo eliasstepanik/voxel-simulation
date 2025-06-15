@@ -2,7 +2,7 @@ use crate::plugins::environment::systems::voxels::structure::*;
 use bevy::prelude::*;
 
 /// Visualize each node of the octree as a scaled cuboid, **center-based**.
-/// `octree_tf.translation` is the world-space center of the root bounding box.
+/// The octree's world-space center is `octree_tf.translation + octree.center`.
 pub fn visualize_octree_system(
     mut gizmos: Gizmos,
     octree_query: Query<(&SparseVoxelOctree, &Transform)>,
@@ -12,8 +12,9 @@ pub fn visualize_octree_system(
         let half_size = octree.size * 0.5;
 
         // Draw a translucent cuboid for the root
+        let root_center = octree_tf.translation + octree.center;
         gizmos.cuboid(
-            Transform::from_translation(octree_tf.translation).with_scale(Vec3::splat(octree.size)),
+            Transform::from_translation(root_center).with_scale(Vec3::splat(octree.size)),
             Color::srgba(1.0, 1.0, 0.0, 0.15),
         );
 
@@ -22,7 +23,7 @@ pub fn visualize_octree_system(
         visualize_recursive_center(
             &mut gizmos,
             &octree.root,
-            octree_tf.translation, // center of root in world
+            root_center, // center of root in world
             octree.size,
             0,
             octree.max_depth,
@@ -105,7 +106,7 @@ pub fn draw_grid(
 
     for (octree, octree_tf) in octree_query.iter() {
         let half_size = octree.size * 0.5;
-        let root_center = octree_tf.translation;
+        let root_center = octree_tf.translation + octree.center;
 
         // Voxel spacing at max depth
         let spacing = octree.get_spacing_at_depth(octree.max_depth);
