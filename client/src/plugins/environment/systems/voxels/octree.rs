@@ -278,44 +278,23 @@ impl SparseVoxelOctree {
 
         // Save the old root
         let old_root = std::mem::replace(&mut self.root, OctreeNode::new());
-        let old_center = self.center;
-        let old_size = self.size;
-        let half = old_size * 0.5;
 
-        // Determine in which direction to expand along each axis
-        let mut shift = Vec3::ZERO;
-        if x >= old_center.x {
-            shift.x = half;
-        } else {
-            shift.x = -half;
-        }
-        if y >= old_center.y {
-            shift.y = half;
-        } else {
-            shift.y = -half;
-        }
-        if z >= old_center.z {
-            shift.z = half;
-        } else {
-            shift.z = -half;
-        }
-
-        // New center after expansion
-        self.center += shift;
-        self.size *= 2.0;
-        self.max_depth += 1;
-
-        // Determine which child the old root should occupy
+        // Determine which child of the new root the previous root should occupy.
+        // The root's center remains unchanged; only its size doubles so that all
+        // existing voxels stay in place.
         let mut index = 0usize;
-        if shift.x < 0.0 {
+        if x < self.center.x {
             index |= 1;
         }
-        if shift.y < 0.0 {
+        if y < self.center.y {
             index |= 2;
         }
-        if shift.z < 0.0 {
+        if z < self.center.z {
             index |= 4;
         }
+
+        self.size *= 2.0;
+        self.max_depth += 1;
 
         let mut children = Box::new(core::array::from_fn(|_| OctreeNode::new()));
         children[index] = old_root;
