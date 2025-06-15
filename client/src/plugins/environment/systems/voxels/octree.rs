@@ -300,9 +300,8 @@ impl SparseVoxelOctree {
         // Prepare new root with children and place the old tree in the correct child
         self.root.children = Some(Box::new(core::array::from_fn(|_| OctreeNode::new())));
         self.root.is_leaf = false;
-        let index = ((sx < 0.0) as usize)
-            | (((sy < 0.0) as usize) << 1)
-            | (((sz < 0.0) as usize) << 2);
+        let index =
+            ((sx < 0.0) as usize) | (((sy < 0.0) as usize) << 1) | (((sz < 0.0) as usize) << 2);
         self.root.children.as_mut().unwrap()[index] = old_root;
 
         // Rebuild caches since chunk mapping changed
@@ -317,52 +316,31 @@ impl SparseVoxelOctree {
         old_size: f32,
         center: Vec3,
     ) -> Vec<(Vec3, Voxel, u32)> {
+        // Use an explicit stack to avoid deep recursion which can overflow on large trees.
         let mut voxels = Vec::new();
-        Self::collect_voxels_recursive(
-            node,
-            center.x - old_size / 2.0,
-            center.y - old_size / 2.0,
-            center.z - old_size / 2.0,
-            old_size,
-            0,
-            &mut voxels,
-        );
-        voxels
-    }
+        let mut stack = vec![(node, center - Vec3::splat(old_size / 2.0), old_size, 0u32)];
 
-    fn collect_voxels_recursive(
-        node: &OctreeNode,
-        x: f32,
-        y: f32,
-        z: f32,
-        size: f32,
-        depth: u32,
-        out: &mut Vec<(Vec3, Voxel, u32)>,
-    ) {
-        if node.is_leaf {
-            if let Some(voxel) = node.voxel {
-                // Compute the center of this node's region.
-                let center = Vec3::new(x + size / 2.0, y + size / 2.0, z + size / 2.0);
-                out.push((center, voxel, depth));
+        while let Some((node, origin, size, depth)) = stack.pop() {
+            if node.is_leaf {
+                if let Some(voxel) = node.voxel {
+                    let center = origin + Vec3::splat(size * 0.5);
+                    voxels.push((center, voxel, depth));
+                }
+            }
+
+            if let Some(children) = &node.children {
+                let half = size / 2.0;
+                for (i, child) in children.iter().enumerate() {
+                    let offset_x = if (i & 1) != 0 { half } else { 0.0 };
+                    let offset_y = if (i & 2) != 0 { half } else { 0.0 };
+                    let offset_z = if (i & 4) != 0 { half } else { 0.0 };
+                    let child_origin = origin + Vec3::new(offset_x, offset_y, offset_z);
+                    stack.push((child, child_origin, half, depth + 1));
+                }
             }
         }
-        if let Some(children) = &node.children {
-            let half = size / 2.0;
-            for (i, child) in children.iter().enumerate() {
-                let offset_x = if (i & 1) != 0 { half } else { 0.0 };
-                let offset_y = if (i & 2) != 0 { half } else { 0.0 };
-                let offset_z = if (i & 4) != 0 { half } else { 0.0 };
-                Self::collect_voxels_recursive(
-                    child,
-                    x + offset_x,
-                    y + offset_y,
-                    z + offset_z,
-                    half,
-                    depth + 1,
-                    out,
-                );
-            }
-        }
+
+        voxels
     }
 
     pub fn traverse(&self) -> Vec<(Vec3, u32)> {
