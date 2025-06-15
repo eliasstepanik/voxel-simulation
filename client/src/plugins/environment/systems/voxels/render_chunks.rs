@@ -55,9 +55,9 @@ pub fn rebuild_dirty_chunks(
                 let half = tree_ref.size * 0.5;
                 let step = tree_ref.get_spacing_at_depth(tree_ref.max_depth);
                 let origin = Vec3::new(
-                    key.0 as f32 * CHUNK_SIZE as f32 * step - half,
-                    key.1 as f32 * CHUNK_SIZE as f32 * step - half,
-                    key.2 as f32 * CHUNK_SIZE as f32 * step - half,
+                    key.0 as f32 * CHUNK_SIZE as f32 * step - half + tree_ref.center.x,
+                    key.1 as f32 * CHUNK_SIZE as f32 * step - half + tree_ref.center.y,
+                    key.2 as f32 * CHUNK_SIZE as f32 * step - half + tree_ref.center.z,
                 );
 
                 let mult = 1 << lod;
