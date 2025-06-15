@@ -1,12 +1,13 @@
 use crate::plugins::big_space::big_space_plugin::RootGrid;
+use crate::plugins::environment::systems::voxels::atlas::VoxelTextureAtlas;
 use crate::plugins::environment::systems::voxels::meshing::mesh_chunk;
 use crate::plugins::environment::systems::voxels::structure::*;
-use crate::plugins::environment::systems::voxels::atlas::VoxelTextureAtlas;
 use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
 use bevy::render::mesh::Mesh;
 use big_space::prelude::GridCell;
 use itertools::Itertools;
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::fmt::format;
 
@@ -41,38 +42,46 @@ pub fn rebuild_dirty_chunks(
         }
 
         //------------------------------------------------ collect voxel data
-        let mut bufs = Vec::new();
-        for key in tree.dirty_chunks.iter().copied() {
-            let lod = existing.get(&key).map(|v| v.3).unwrap_or(0);
-            let mut buf = [[[None; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize];
+        let tree_ref = &*tree;
+        let bufs: Vec<_> = tree
+            .dirty_chunks
+            .par_iter()
+            .copied()
+            .map(|key| {
+                let lod = existing.get(&key).map(|v| v.3).unwrap_or(0);
+                let mut buf =
+                    [[[None; CHUNK_SIZE as usize]; CHUNK_SIZE as usize]; CHUNK_SIZE as usize];
 
-            let half = tree.size * 0.5;
-            let step = tree.get_spacing_at_depth(tree.max_depth);
-            let origin = Vec3::new(
-                key.0 as f32 * CHUNK_SIZE as f32 * step - half,
-                key.1 as f32 * CHUNK_SIZE as f32 * step - half,
-                key.2 as f32 * CHUNK_SIZE as f32 * step - half,
-            );
+                let half = tree_ref.size * 0.5;
+                let step = tree_ref.get_spacing_at_depth(tree_ref.max_depth);
+                let origin = Vec3::new(
+                    key.0 as f32 * CHUNK_SIZE as f32 * step - half,
+                    key.1 as f32 * CHUNK_SIZE as f32 * step - half,
+                    key.2 as f32 * CHUNK_SIZE as f32 * step - half,
+                );
 
-            let mult = 1 << lod;
-            for gx in (0..CHUNK_SIZE).step_by(mult as usize) {
-                for gy in (0..CHUNK_SIZE).step_by(mult as usize) {
-                    for gz in (0..CHUNK_SIZE).step_by(mult as usize) {
-                        let center = origin
-                            + Vec3::new(
-                                (gx + mult / 2) as f32 * step,
-                                (gy + mult / 2) as f32 * step,
-                                (gz + mult / 2) as f32 * step,
-                            );
-                        if let Some(v) = tree.get_voxel_at_world_coords(center) {
-                            for lx in 0..mult {
-                                for ly in 0..mult {
-                                    for lz in 0..mult {
-                                        let ix = gx + lx;
-                                        let iy = gy + ly;
-                                        let iz = gz + lz;
-                                        if ix < CHUNK_SIZE && iy < CHUNK_SIZE && iz < CHUNK_SIZE {
-                                            buf[ix as usize][iy as usize][iz as usize] = Some(*v);
+                let mult = 1 << lod;
+                for gx in (0..CHUNK_SIZE).step_by(mult as usize) {
+                    for gy in (0..CHUNK_SIZE).step_by(mult as usize) {
+                        for gz in (0..CHUNK_SIZE).step_by(mult as usize) {
+                            let center = origin
+                                + Vec3::new(
+                                    (gx + mult / 2) as f32 * step,
+                                    (gy + mult / 2) as f32 * step,
+                                    (gz + mult / 2) as f32 * step,
+                                );
+                            if let Some(v) = tree_ref.get_voxel_at_world_coords(center) {
+                                for lx in 0..mult {
+                                    for ly in 0..mult {
+                                        for lz in 0..mult {
+                                            let ix = gx + lx;
+                                            let iy = gy + ly;
+                                            let iz = gz + lz;
+                                            if ix < CHUNK_SIZE && iy < CHUNK_SIZE && iz < CHUNK_SIZE
+                                            {
+                                                buf[ix as usize][iy as usize][iz as usize] =
+                                                    Some(*v);
+                                            }
                                         }
                                     }
                                 }
@@ -80,10 +89,10 @@ pub fn rebuild_dirty_chunks(
                         }
                     }
                 }
-            }
 
-            bufs.push((key, buf, origin, step, lod));
-        }
+                (key, buf, origin, step, lod)
+            })
+            .collect();
 
         //------------------------------------------------ create / update
         for (key, buf, origin, step, lod) in bufs {
