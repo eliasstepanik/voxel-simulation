@@ -21,7 +21,7 @@ struct Vertex {
 @group(0) @binding(1) var<uniform> params: Params;
 @group(0) @binding(2) var<storage, read_write> vertices: array<Vertex>;
 @group(0) @binding(3) var<storage, read_write> indices: array<u32>;
-@group(0) @binding(4) var<storage, read_write> counts: atomic<u32>;
+@group(0) @binding(4) var<storage, read_write> counts: array<atomic<u32>, 2>;
 
 const N: u32 = 16u;
 
@@ -86,15 +86,20 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                         }
 
                         var height: u32 = 1u;
-                        outer: loop {
+                        loop {
                             if v0 + height >= N {
                                 break;
                             }
+                            var can_expand: bool = true;
                             for (var du: u32 = 0u; du < width; du = du + 1u) {
                                 let idx = (u0 + du) * N + v0 + height;
                                 if !mask[idx] || visited[idx] {
-                                    break outer;
+                                    can_expand = false;
+                                    break;
                                 }
+                            }
+                            if !can_expand {
+                                break;
                             }
                             height = height + 1u;
                         }
@@ -108,11 +113,11 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                         // Compute base world-space position.
                         var base = params.origin;
                         if axis == 0u {
-                            base = base + vec3<f32>(f32(slice) + (dir > 0 ? 1.0 : 0.0), f32(u0), f32(v0)) * params.step;
+                            base = base + vec3<f32>(f32(slice) + select(0.0, 1.0, dir > 0), f32(u0), f32(v0)) * params.step;
                         } else if axis == 1u {
-                            base = base + vec3<f32>(f32(v0), f32(slice) + (dir > 0 ? 1.0 : 0.0), f32(u0)) * params.step;
+                            base = base + vec3<f32>(f32(v0), f32(slice) + select(0.0, 1.0, dir > 0), f32(u0)) * params.step;
                         } else {
-                            base = base + vec3<f32>(f32(u0), f32(v0), f32(slice) + (dir > 0 ? 1.0 : 0.0)) * params.step;
+                            base = base + vec3<f32>(f32(u0), f32(v0), f32(slice) + select(0.0, 1.0, dir > 0)) * params.step;
                         }
 
                         let size = vec2<f32>(f32(width) * params.step, f32(height) * params.step);
@@ -141,10 +146,10 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                         let p3 = base + v_unit * size.y;
 
                         let vi = atomicAdd(&counts[0], 4u);
-                        vertices[vi] = Vertex(pos: p0, normal: normal, uv: vec2<f32>(0.0, 1.0));
-                        vertices[vi + 1u] = Vertex(pos: p1, normal: normal, uv: vec2<f32>(1.0, 1.0));
-                        vertices[vi + 2u] = Vertex(pos: p2, normal: normal, uv: vec2<f32>(1.0, 0.0));
-                        vertices[vi + 3u] = Vertex(pos: p3, normal: normal, uv: vec2<f32>(0.0, 0.0));
+                        vertices[vi] = Vertex(p0, normal, vec2<f32>(0.0, 1.0));
+                        vertices[vi + 1u] = Vertex(p1, normal, vec2<f32>(1.0, 1.0));
+                        vertices[vi + 2u] = Vertex(p2, normal, vec2<f32>(1.0, 0.0));
+                        vertices[vi + 3u] = Vertex(p3, normal, vec2<f32>(0.0, 0.0));
 
                         let ii = atomicAdd(&counts[1], 6u);
                         if dir > 0 {
