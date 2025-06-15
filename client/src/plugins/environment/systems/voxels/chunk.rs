@@ -6,12 +6,12 @@ use crate::plugins::environment::systems::voxels::structure::{ChunkKey, SparseVo
 impl SparseVoxelOctree {
     pub fn chunk_has_any_voxel(&self, key: ChunkKey) -> bool {
         // world-space centre of the chunk
-        let step  = self.get_spacing_at_depth(self.max_depth);
-        let half  = self.size * 0.5;
+        let step = self.get_spacing_at_depth(self.max_depth);
+        let half = self.size * 0.5;
         let centre = Vec3::new(
-            (key.0 as f32 + 0.5) * CHUNK_SIZE as f32 * step - half,
-            (key.1 as f32 + 0.5) * CHUNK_SIZE as f32 * step - half,
-            (key.2 as f32 + 0.5) * CHUNK_SIZE as f32 * step - half,
+            self.center.x - half + (key.0 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
+            self.center.y - half + (key.1 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
+            self.center.z - half + (key.2 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
         );
 
         // depth of the octree node that exactly matches one chunk

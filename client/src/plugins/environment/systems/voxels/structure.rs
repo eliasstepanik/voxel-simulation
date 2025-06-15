@@ -38,6 +38,7 @@ pub struct SparseVoxelOctree {
     pub root: OctreeNode,
     pub max_depth: u32,
     pub size: f32,
+    pub center: Vec3,
     pub show_wireframe: bool,
     pub show_world_grid: bool,
 
