@@ -288,49 +288,40 @@ impl SparseVoxelOctree {
         let offset = 1u32 << (old_depth - 1);
 
         // Move all voxels from the old root into the new one using the offset.
-        Self::reinsert_shifted(&mut self.root, &old_root, 0, 0, 0, 0, old_depth, offset);
+        Self::reinsert_shifted(&mut self.root, &old_root, old_depth, offset);
     }
 
-    /// Recursively traverse `old` and insert its voxels into `new_root` while
-    /// shifting their indices by `offset`.
+    /// Traverse `old` and insert its voxels into `new_root` while shifting
+    /// their indices by `offset`. Uses an explicit stack to avoid deep
+    /// recursion.
     fn reinsert_shifted(
         new_root: &mut OctreeNode,
         old: &OctreeNode,
-        ix: u32,
-        iy: u32,
-        iz: u32,
-        depth: u32,
         max_depth_old: u32,
         offset: u32,
     ) {
-        if depth == max_depth_old {
-            if let Some(voxel) = old.voxel {
-                let denom = 1u32 << (max_depth_old + 1);
-                let pos = Vec3::new(
-                    (ix + offset) as f32 + 0.5,
-                    (iy + offset) as f32 + 0.5,
-                    (iz + offset) as f32 + 0.5,
-                ) / denom as f32;
-                Self::insert_recursive(new_root, pos, voxel, max_depth_old + 1);
+        let mut stack = vec![(old, 0u32, 0u32, 0u32, 0u32)];
+        while let Some((node, ix, iy, iz, depth)) = stack.pop() {
+            if depth == max_depth_old {
+                if let Some(voxel) = node.voxel {
+                    let denom = 1u32 << (max_depth_old + 1);
+                    let pos = Vec3::new(
+                        (ix + offset) as f32 + 0.5,
+                        (iy + offset) as f32 + 0.5,
+                        (iz + offset) as f32 + 0.5,
+                    ) / denom as f32;
+                    Self::insert_recursive(new_root, pos, voxel, max_depth_old + 1);
+                }
+                continue;
             }
-            return;
-        }
 
-        if let Some(children) = &old.children {
-            for (i, child) in children.iter().enumerate() {
-                let bx = (i & 1) as u32;
-                let by = ((i >> 1) & 1) as u32;
-                let bz = ((i >> 2) & 1) as u32;
-                Self::reinsert_shifted(
-                    new_root,
-                    child,
-                    (ix << 1) | bx,
-                    (iy << 1) | by,
-                    (iz << 1) | bz,
-                    depth + 1,
-                    max_depth_old,
-                    offset,
-                );
+            if let Some(children) = &node.children {
+                for (i, child) in children.iter().enumerate() {
+                    let bx = (i & 1) as u32;
+                    let by = ((i >> 1) & 1) as u32;
+                    let bz = ((i >> 2) & 1) as u32;
+                    stack.push((child, (ix << 1) | bx, (iy << 1) | by, (iz << 1) | bz, depth + 1));
+                }
             }
         }
     }
