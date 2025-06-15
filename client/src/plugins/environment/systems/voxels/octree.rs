@@ -289,6 +289,12 @@ impl SparseVoxelOctree {
 
         // Move all voxels from the old root into the new one using the offset.
         Self::reinsert_shifted(&mut self.root, &old_root, old_depth, offset);
+
+        // Existing chunk meshes were positioned using the previous octree size.
+        // Mark them dirty so they get rebuilt with the new origin.
+        for key in self.occupied_chunks.iter().copied() {
+            self.dirty_chunks.insert(key);
+        }
     }
 
     /// Traverse `old` and insert its voxels into `new_root` while shifting
