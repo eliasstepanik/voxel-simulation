@@ -1,7 +1,7 @@
 use crate::plugins::environment::systems::voxels::helper::chunk_key_from_world;
 use crate::plugins::environment::systems::voxels::structure::{
-    AABB, CHUNK_SIZE, ChunkKey, DirtyVoxel, NEIGHBOR_OFFSETS, OctreeNode, Ray, SparseVoxelOctree,
-    Voxel,
+    ChunkKey, DirtyVoxel, OctreeNode, Ray, SparseVoxelOctree, Voxel, AABB, CHUNK_SIZE,
+    NEIGHBOR_OFFSETS,
 };
 use bevy::asset::Assets;
 use bevy::math::{DQuat, DVec3};
@@ -274,18 +274,64 @@ impl SparseVoxelOctree {
 
     fn expand_root(&mut self, _x: f32, _y: f32, _z: f32) {
         info!("Root expanding ...");
-        // Save the old root and its size.
-        let old_root = std::mem::replace(&mut self.root, OctreeNode::new());
-        let old_size = self.size;
 
-        // Update the octree's size and depth.
+        // Preserve the old root and depth before growing the tree
+        let old_root = std::mem::replace(&mut self.root, OctreeNode::new());
+        let old_depth = self.max_depth;
+
+        // Increase size and depth of the octree
         self.size *= 2.0;
         self.max_depth += 1;
 
-        // Reinsert each voxel from the old tree.
-        let voxels = Self::collect_voxels_from_node(&old_root, old_size);
-        for (world_pos, voxel, _depth) in voxels {
-            self.insert(world_pos, voxel);
+        // Offset (in index space) that keeps old voxels at the same world
+        // coordinates when the root size doubles.
+        let offset = 1u32 << (old_depth - 1);
+
+        // Move all voxels from the old root into the new one using the offset.
+        Self::reinsert_shifted(&mut self.root, &old_root, 0, 0, 0, 0, old_depth, offset);
+    }
+
+    /// Recursively traverse `old` and insert its voxels into `new_root` while
+    /// shifting their indices by `offset`.
+    fn reinsert_shifted(
+        new_root: &mut OctreeNode,
+        old: &OctreeNode,
+        ix: u32,
+        iy: u32,
+        iz: u32,
+        depth: u32,
+        max_depth_old: u32,
+        offset: u32,
+    ) {
+        if depth == max_depth_old {
+            if let Some(voxel) = old.voxel {
+                let denom = 1u32 << (max_depth_old + 1);
+                let pos = Vec3::new(
+                    (ix + offset) as f32 + 0.5,
+                    (iy + offset) as f32 + 0.5,
+                    (iz + offset) as f32 + 0.5,
+                ) / denom as f32;
+                Self::insert_recursive(new_root, pos, voxel, max_depth_old + 1);
+            }
+            return;
+        }
+
+        if let Some(children) = &old.children {
+            for (i, child) in children.iter().enumerate() {
+                let bx = (i & 1) as u32;
+                let by = ((i >> 1) & 1) as u32;
+                let bz = ((i >> 2) & 1) as u32;
+                Self::reinsert_shifted(
+                    new_root,
+                    child,
+                    (ix << 1) | bx,
+                    (iy << 1) | by,
+                    (iz << 1) | bz,
+                    depth + 1,
+                    max_depth_old,
+                    offset,
+                );
+            }
         }
     }
 
