@@ -26,6 +26,7 @@ impl SparseVoxelOctree {
             root: OctreeNode::new(),
             max_depth,
             size,
+            center: Vec3::ZERO,
             show_wireframe,
             show_world_grid,
             dirty: Vec::new(),
@@ -125,9 +126,9 @@ impl SparseVoxelOctree {
         let step = self.get_spacing_at_depth(self.max_depth);
         let half = self.size * 0.5;
 
-        let gx = ((position.x + half) / step).floor() as i32;
-        let gy = ((position.y + half) / step).floor() as i32;
-        let gz = ((position.z + half) / step).floor() as i32;
+        let gx = ((position.x - self.center.x + half) / step).floor() as i32;
+        let gy = ((position.y - self.center.y + half) / step).floor() as i32;
+        let gz = ((position.z - self.center.z + half) / step).floor() as i32;
 
         let lx = gx - key.0 * CHUNK_SIZE;
         let ly = gy - key.1 * CHUNK_SIZE;
@@ -272,32 +273,57 @@ impl SparseVoxelOctree {
         false
     }
 
-    fn expand_root(&mut self, _x: f32, _y: f32, _z: f32) {
+    /// Grow the octree so that the given world-space point fits within the root.
+    /// The previous root becomes a child of the new root without re-inserting every voxel.
+    fn expand_root(&mut self, x: f32, y: f32, z: f32) {
         info!("Root expanding ...");
-        // Save the old root and its size.
-        let old_root = std::mem::replace(&mut self.root, OctreeNode::new());
-        let old_size = self.size;
 
-        // Update the octree's size and depth.
+        let old_root = std::mem::replace(&mut self.root, OctreeNode::new());
+        let old_center = self.center;
+        let half = self.size * 0.5;
+
+        // Determine the direction to shift the center. The old root occupies the opposite child.
+        let mut child_index = 0usize;
+        if x >= old_center.x {
+            self.center.x += half;
+        } else {
+            self.center.x -= half;
+            child_index |= 1;
+        }
+        if y >= old_center.y {
+            self.center.y += half;
+        } else {
+            self.center.y -= half;
+            child_index |= 2;
+        }
+        if z >= old_center.z {
+            self.center.z += half;
+        } else {
+            self.center.z -= half;
+            child_index |= 4;
+        }
+
         self.size *= 2.0;
         self.max_depth += 1;
 
-        // Reinsert each voxel from the old tree.
-        let voxels = Self::collect_voxels_from_node(&old_root, old_size);
-        for (world_pos, voxel, _depth) in voxels {
-            self.insert(world_pos, voxel);
-        }
+        let mut children = Box::new(core::array::from_fn(|_| OctreeNode::new()));
+        children[child_index] = old_root;
+        self.root.children = Some(children);
+        self.root.is_leaf = false;
+
+        // Rebuild caches so chunk bookkeeping stays consistent with the new center.
+        self.rebuild_cache();
     }
 
     /// Helper: Collect all voxels from a given octree node recursively.
     /// The coordinate system here assumes the node covers [–old_size/2, +old_size/2] in each axis.
-    fn collect_voxels_from_node(node: &OctreeNode, old_size: f32) -> Vec<(Vec3, Voxel, u32)> {
+    fn collect_voxels_from_node(node: &OctreeNode, old_size: f32, center: Vec3) -> Vec<(Vec3, Voxel, u32)> {
         let mut voxels = Vec::new();
         Self::collect_voxels_recursive(
             node,
-            -old_size / 2.0,
-            -old_size / 2.0,
-            -old_size / 2.0,
+            center.x - old_size / 2.0,
+            center.y - old_size / 2.0,
+            center.z - old_size / 2.0,
             old_size,
             0,
             &mut voxels,
@@ -440,7 +466,7 @@ impl SparseVoxelOctree {
 
         // Convert the normalized neighbor coordinate back to world space
         let half_size = self.size * 0.5;
-        let neighbor_world = neighbor * self.size - Vec3::splat(half_size);
+        let neighbor_world = neighbor * self.size - Vec3::splat(half_size) + self.center;
 
         if !self.contains(neighbor_world.x, neighbor_world.y, neighbor_world.z) {
             return false;
@@ -454,8 +480,8 @@ impl SparseVoxelOctree {
         // Start from the root node
         let half_size = self.size / 2.0;
         let root_bounds = AABB {
-            min: Vec3::new(-half_size as f32, -half_size as f32, -half_size as f32),
-            max: Vec3::new(half_size as f32, half_size as f32, half_size as f32),
+            min: self.center - Vec3::splat(half_size),
+            max: self.center + Vec3::splat(half_size),
         };
         self.raycast_recursive(&self.root, ray, &root_bounds, 0)
     }
@@ -537,7 +563,7 @@ impl SparseVoxelOctree {
         self.dirty_chunks.clear();
         self.occupied_chunks.clear();
 
-        let voxels = Self::collect_voxels_from_node(&self.root, self.size);
+        let voxels = Self::collect_voxels_from_node(&self.root, self.size, self.center);
         for (pos, _voxel, _depth) in voxels {
             let key = chunk_key_from_world(self, pos);
             self.occupied_chunks.insert(key);

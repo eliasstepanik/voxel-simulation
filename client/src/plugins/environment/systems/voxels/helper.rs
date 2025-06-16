@@ -28,8 +28,8 @@ impl SparseVoxelOctree {
     pub fn normalize_to_voxel_at_depth(&self, position: Vec3, depth: u32) -> Vec3 {
         // Convert world coordinate to normalized [0,1] space.
         let half_size = self.size * 0.5;
-        // Shift to [0, self.size]
-        let shifted = (position + Vec3::splat(half_size)) / self.size;
+        // Shift to [0, self.size] taking the octree centre into account
+        let shifted = (position - (self.center - Vec3::splat(half_size))) / self.size;
         // Determine the number of voxels along an edge at the given depth.
         let voxel_count = 2_u32.pow(depth) as f32;
         // Get the voxel index (as a float) and then compute the center in normalized space.
@@ -40,7 +40,7 @@ impl SparseVoxelOctree {
     pub fn denormalize_voxel_center(&self, voxel_center: Vec3) -> Vec3 {
         let half_size = self.size * 0.5;
         // Convert the normalized voxel center back to world space.
-        voxel_center * self.size - Vec3::splat(half_size)
+        voxel_center * self.size - Vec3::splat(half_size) + self.center
     }
 
 
@@ -109,9 +109,9 @@ impl SparseVoxelOctree {
     pub fn contains(&self, x: f32, y: f32, z: f32) -> bool {
         let half_size = self.size / 2.0;
         let eps = 1e-6;
-        (x >= -half_size - eps && x < half_size + eps)
-            && (y >= -half_size - eps && y < half_size + eps)
-            && (z >= -half_size - eps && z < half_size + eps)
+        (x >= self.center.x - half_size - eps && x < self.center.x + half_size + eps)
+            && (y >= self.center.y - half_size - eps && y < self.center.y + half_size + eps)
+            && (z >= self.center.z - half_size - eps && z < self.center.z + half_size + eps)
     }
 
     /// Retrieve a voxel at world coordinates by normalizing and looking up.
@@ -122,12 +122,8 @@ impl SparseVoxelOctree {
 
     pub fn local_to_world(&self, local_pos: Vec3) -> Vec3 {
         // Half the total octree size, used to shift the center to the origin.
-        let half_size = self.size * 0.5;
-        // Convert local coordinate to world space:
-        // 1. Subtract 0.5 to center the coordinate at zero (range becomes [-0.5, 0.5])
-        // 2. Multiply by the total size to scale into world units.
-        // 3. Add half_size to shift from a center–based system to one starting at zero.
-        (local_pos - Vec3::splat(0.5)) * self.size + Vec3::splat(half_size)
+        // Convert normalized coordinate to world space, accounting for the octree centre
+        (local_pos - Vec3::splat(0.5)) * self.size + self.center
     }
 
 
@@ -248,24 +244,23 @@ pub fn face_orientation(dx: f32, dy: f32, dz: f32, voxel_size_f: f32) -> (Vec3, 
 
 pub(crate) fn chunk_key_from_world(tree: &SparseVoxelOctree, pos: Vec3) -> ChunkKey {
     let half = tree.size * 0.5;
-
     let step = tree.get_spacing_at_depth(tree.max_depth);
-    let scale = CHUNK_SIZE as f32 * step;          // metres per chunk
+    let scale = CHUNK_SIZE as f32 * step; // metres per chunk
     ChunkKey(
-        ((pos.x + half) / scale).floor() as i32,
-        ((pos.y + half) / scale).floor() as i32,
-        ((pos.z + half) / scale).floor() as i32,
+        ((pos.x - tree.center.x + half) / scale).floor() as i32,
+        ((pos.y - tree.center.y + half) / scale).floor() as i32,
+        ((pos.z - tree.center.z + half) / scale).floor() as i32,
     )
 }
 
 pub fn world_to_chunk(tree: &SparseVoxelOctree, p: Vec3) -> ChunkKey {
-    let step  = tree.get_spacing_at_depth(tree.max_depth);
-    let half  = tree.size * 0.5;
+    let step = tree.get_spacing_at_depth(tree.max_depth);
+    let half = tree.size * 0.5;
     let scale = CHUNK_SIZE as f32 * step;
     ChunkKey(
-        ((p.x + half) / scale).floor() as i32,
-        ((p.y + half) / scale).floor() as i32,
-        ((p.z + half) / scale).floor() as i32,
+        ((p.x - tree.center.x + half) / scale).floor() as i32,
+        ((p.y - tree.center.y + half) / scale).floor() as i32,
+        ((p.z - tree.center.z + half) / scale).floor() as i32,
     )
 }
 
@@ -273,9 +268,9 @@ pub fn chunk_center_world(tree: &SparseVoxelOctree, key: ChunkKey) -> Vec3 {
     let half = tree.size * 0.5;
     let step = tree.get_spacing_at_depth(tree.max_depth);
     Vec3::new(
-        (key.0 as f32 + 0.5) * CHUNK_SIZE as f32 * step - half,
-        (key.1 as f32 + 0.5) * CHUNK_SIZE as f32 * step - half,
-        (key.2 as f32 + 0.5) * CHUNK_SIZE as f32 * step - half,
+        tree.center.x - half + (key.0 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
+        tree.center.y - half + (key.1 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
+        tree.center.z - half + (key.2 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
     )
 }
 
@@ -298,8 +293,8 @@ impl SparseVoxelOctree {
     pub fn collect_voxels_in_region(&self, min: Vec3, max: Vec3) -> Vec<(Vec3, Voxel)> {
         let half_size = self.size * 0.5;
         let root_bounds = AABB {
-            min: Vec3::new(-half_size, -half_size, -half_size),
-            max: Vec3::new(half_size, half_size, half_size),
+            min: self.center - Vec3::splat(half_size),
+            max: self.center + Vec3::splat(half_size),
         };
         let mut voxels = Vec::new();
         self.collect_voxels_in_region_recursive(&self.root, root_bounds, min, max, &mut voxels);
