@@ -1,7 +1,8 @@
 use crate::plugins::big_space::big_space_plugin::RootGrid;
 use crate::plugins::environment::systems::voxels::structure::*;
 use rayon::prelude::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::thread;
 
 use bevy::prelude::*;
 use bevy::render::mesh::*;
@@ -9,42 +10,37 @@ use noise::{NoiseFn, Perlin};
 use rand::{Rng, thread_rng};
 
 pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
-    // Octree parameters
-    let unit_size = 1.0_f32;
-    let octree_base_size = 64.0 * unit_size;
-    let octree_depth = 10;
+    let builder = thread::Builder::new()
+        .name("octree-build".into())
+        .stack_size(32 * 1024 * 1024);
 
-    let path = Path::new("octree.bin");
+    let path = PathBuf::from("octree.bin");
 
-    let mut octree = if path.exists() {
-        match SparseVoxelOctree::load_from_file(path) {
-            Ok(tree) => tree,
-            Err(err) => {
-                error!("failed to load octree: {err}");
-                SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false)
+    let octree = builder
+        .spawn(move || {
+            // Octree parameters
+            let unit_size = 1.0_f32;
+            let octree_base_size = 64.0 * unit_size;
+            let octree_depth = 10;
+
+            if path.exists() {
+                match SparseVoxelOctree::load_from_file(&path) {
+                    Ok(tree) => tree,
+                    Err(err) => {
+                        error!("failed to load octree: {err}");
+                        SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false)
+                    }
+                }
+            } else {
+                let mut tree =
+                    SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false);
+                generate_voxel_sphere(&mut tree, 200);
+                tree
             }
-        }
-    } else {
-        let mut tree = SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false);
-        // How many random spheres?
-        /*const NUM_SPHERES: usize = 5;
-        let mut rng = threald_rng();
-
-        for _ in 0..NUM_SPHERES {
-            let center = Vec3::new(
-                rng.gen_range(-1000.0..1000.0),
-                rng.gen_range(-1000.0..1000.0),
-                rng.gen_range(-1000.0..1000.0),
-            );
-
-            let radius = rng.gen_range(20..=150);     // voxels
-
-            generate_voxel_sphere_parallel(&mut tree, center, radius);
-        }*/
-
-        generate_voxel_sphere(&mut tree, 200);
-        tree
-    };
+        })
+        .expect("failed to spawn octree build thread")
+        .join()
+        .expect("octree build thread panicked");
 
     // Attach octree to the scene graph
     commands.entity(root.0).with_children(|parent| {

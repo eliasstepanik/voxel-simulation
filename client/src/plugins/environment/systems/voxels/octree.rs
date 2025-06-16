@@ -13,6 +13,9 @@ use std::collections::{HashMap, HashSet};
 use std::io;
 use std::path::Path;
 
+/// Maximum allowed depth for the octree to avoid stack overflows.
+pub const MAX_DEPTH_LIMIT: u32 = 48;
+
 impl SparseVoxelOctree {
     /// Creates a new octree with the specified max depth, size, and wireframe visibility.
     pub fn new(
@@ -22,6 +25,10 @@ impl SparseVoxelOctree {
         show_world_grid: bool,
         show_chunks: bool,
     ) -> Self {
+        assert!(
+            max_depth <= MAX_DEPTH_LIMIT,
+            "initial depth exceeds MAX_DEPTH_LIMIT"
+        );
         Self {
             root: OctreeNode::new(),
             max_depth,
@@ -41,6 +48,11 @@ impl SparseVoxelOctree {
 
         // Expand as needed using the denormalized position.
         while !self.contains(world_center.x, world_center.y, world_center.z) {
+            assert!(
+                self.max_depth < MAX_DEPTH_LIMIT,
+                "octree exceeded maximum depth of {}",
+                MAX_DEPTH_LIMIT
+            );
             self.expand_root(world_center.x, world_center.y, world_center.z);
             // Recompute aligned and world_center after expansion.
             aligned = self.normalize_to_voxel_at_depth(position, self.max_depth);
@@ -276,40 +288,46 @@ impl SparseVoxelOctree {
     /// Grow the octree so that the given world-space point fits within the root.
     /// The previous root becomes a child of the new root without re-inserting every voxel.
     fn expand_root(&mut self, x: f32, y: f32, z: f32) {
+        assert!(
+            self.max_depth < MAX_DEPTH_LIMIT,
+            "octree exceeded maximum depth of {}",
+            MAX_DEPTH_LIMIT
+        );
         info!("Root expanding ...");
 
         let old_root = std::mem::replace(&mut self.root, OctreeNode::new());
+        let old_size = self.size;
         let old_center = self.center;
-        let half = self.size * 0.5;
 
-        // Determine the direction to shift the center. The old root occupies the opposite child.
-        let mut child_index = 0usize;
+        // Gather all voxels from the previous tree before resizing.
+        let voxels = Self::collect_voxels_from_node(&old_root, old_size, old_center);
+
+        let half = self.size * 0.5;
         if x >= old_center.x {
             self.center.x += half;
         } else {
             self.center.x -= half;
-            child_index |= 1;
         }
         if y >= old_center.y {
             self.center.y += half;
         } else {
             self.center.y -= half;
-            child_index |= 2;
         }
         if z >= old_center.z {
             self.center.z += half;
         } else {
             self.center.z -= half;
-            child_index |= 4;
         }
 
         self.size *= 2.0;
-        self.max_depth += 1;
 
-        let mut children = Box::new(core::array::from_fn(|_| OctreeNode::new()));
-        children[child_index] = old_root;
-        self.root.children = Some(children);
-        self.root.is_leaf = false;
+        // Reinsert voxels at the fixed depth so the tree depth stays constant.
+        for (pos, voxel, _) in voxels {
+            let aligned = self.normalize_to_voxel_at_depth(pos, self.max_depth);
+            Self::insert_recursive(&mut self.root, aligned, voxel, self.max_depth);
+        }
+
+        self.root.is_leaf = self.root.children.is_none() && self.root.voxel.is_some();
 
         // Rebuild caches so chunk bookkeeping stays consistent with the new center.
         self.rebuild_cache();
@@ -317,7 +335,11 @@ impl SparseVoxelOctree {
 
     /// Helper: Collect all voxels from a given octree node recursively.
     /// The coordinate system here assumes the node covers [–old_size/2, +old_size/2] in each axis.
-    fn collect_voxels_from_node(node: &OctreeNode, old_size: f32, center: Vec3) -> Vec<(Vec3, Voxel, u32)> {
+    fn collect_voxels_from_node(
+        node: &OctreeNode,
+        old_size: f32,
+        center: Vec3,
+    ) -> Vec<(Vec3, Voxel, u32)> {
         let mut voxels = Vec::new();
         Self::collect_voxels_recursive(
             node,
