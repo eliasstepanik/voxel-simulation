@@ -13,6 +13,9 @@ use std::collections::{HashMap, HashSet};
 use std::io;
 use std::path::Path;
 
+/// Safety cap to avoid runaway recursion when expanding the octree.
+const MAX_ROOT_DEPTH: u32 = 64;
+
 impl SparseVoxelOctree {
     /// Creates a new octree with the specified max depth, size, and wireframe visibility.
     pub fn new(
@@ -41,6 +44,10 @@ impl SparseVoxelOctree {
 
         // Expand as needed using the denormalized position.
         while !self.contains(world_center.x, world_center.y, world_center.z) {
+            if self.max_depth >= MAX_ROOT_DEPTH {
+                error!("maximum octree depth reached; insertion skipped");
+                return;
+            }
             self.expand_root(world_center.x, world_center.y, world_center.z);
             // Recompute aligned and world_center after expansion.
             aligned = self.normalize_to_voxel_at_depth(position, self.max_depth);
@@ -55,7 +62,30 @@ impl SparseVoxelOctree {
         self.mark_neighbor_chunks_dirty(position);
         self.occupied_chunks.insert(key);
 
-        Self::insert_recursive(&mut self.root, aligned, voxel, self.max_depth);
+        let mut node = &mut self.root;
+        let mut pos = aligned;
+        let mut depth = self.max_depth;
+        let epsilon = 1e-6;
+        while depth > 0 {
+            let index = ((pos.x >= 0.5 - epsilon) as usize)
+                + ((pos.y >= 0.5 - epsilon) as usize * 2)
+                + ((pos.z >= 0.5 - epsilon) as usize * 4);
+
+            if node.children.is_none() {
+                node.children = Some(Box::new(core::array::from_fn(|_| OctreeNode::new())));
+                node.is_leaf = false;
+            }
+
+            let children = node.children.as_mut().unwrap();
+            node = &mut children[index];
+
+            let adjust = |c: f32| if c >= 0.5 - epsilon { (c - 0.5) * 2.0 } else { c * 2.0 };
+            pos = Vec3::new(adjust(pos.x), adjust(pos.y), adjust(pos.z));
+            depth -= 1;
+        }
+
+        node.voxel = Some(voxel);
+        node.is_leaf = true;
     }
 
     fn insert_recursive(node: &mut OctreeNode, position: Vec3, voxel: Voxel, depth: u32) {
@@ -103,13 +133,56 @@ impl SparseVoxelOctree {
         self.dirty_chunks.insert(key);
         self.mark_neighbor_chunks_dirty(position);
 
-        Self::remove_recursive(
-            &mut self.root,
-            aligned.x,
-            aligned.y,
-            aligned.z,
-            self.max_depth,
-        );
+        let mut stack: Vec<(*mut OctreeNode, usize)> = Vec::with_capacity(self.max_depth as usize);
+        let mut node: *mut OctreeNode = &mut self.root;
+        let mut pos = aligned;
+        let mut depth = self.max_depth;
+        let eps = 1e-6;
+
+        unsafe {
+            while depth > 0 {
+                if (*node).children.is_none() {
+                    return;
+                }
+                let idx = ((pos.x >= 0.5 - eps) as usize)
+                    + ((pos.y >= 0.5 - eps) as usize * 2)
+                    + ((pos.z >= 0.5 - eps) as usize * 4);
+
+                stack.push((node, idx));
+                let children = (*node).children.as_mut().unwrap();
+                node = &mut children[idx] as *mut OctreeNode;
+
+                let adjust = |c: f32| if c >= 0.5 - eps { (c - 0.5) * 2.0 } else { c * 2.0 };
+                pos = Vec3::new(adjust(pos.x), adjust(pos.y), adjust(pos.z));
+                depth -= 1;
+            }
+
+            if (*node).voxel.is_none() {
+                return;
+            }
+            (*node).voxel = None;
+            (*node).is_leaf = false;
+
+            while let Some((parent_ptr, idx)) = stack.pop() {
+                let parent = &mut *parent_ptr;
+                let child = &mut parent.children.as_mut().unwrap()[idx];
+                if child.is_empty() {
+                    parent.children.as_mut().unwrap()[idx] = OctreeNode::new();
+                }
+                if parent
+                    .children
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .all(|c| c.is_empty())
+                {
+                    parent.children = None;
+                    parent.is_leaf = true;
+                } else {
+                    break;
+                }
+            }
+        }
 
         if !self.chunk_has_any_voxel(key) {
             self.occupied_chunks.remove(&key);
@@ -216,62 +289,6 @@ impl SparseVoxelOctree {
         }
     }
 
-    fn remove_recursive(node: &mut OctreeNode, x: f32, y: f32, z: f32, depth: u32) -> bool {
-        if depth == 0 {
-            if node.voxel.is_some() {
-                node.voxel = None;
-                node.is_leaf = false;
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-        if node.children.is_none() {
-            return false;
-        }
-        let epsilon = 1e-6;
-        let index = ((x >= 0.5 - epsilon) as usize)
-            + ((y >= 0.5 - epsilon) as usize * 2)
-            + ((z >= 0.5 - epsilon) as usize * 4);
-
-        let adjust_coord = |coord: f32| {
-            if coord >= 0.5 - epsilon {
-                (coord - 0.5) * 2.0
-            } else {
-                coord * 2.0
-            }
-        };
-
-        let child = &mut node.children.as_mut().unwrap()[index];
-        let should_prune_child = Self::remove_recursive(
-            child,
-            adjust_coord(x),
-            adjust_coord(y),
-            adjust_coord(z),
-            depth - 1,
-        );
-
-        if should_prune_child {
-            // remove the child node
-            node.children.as_mut().unwrap()[index] = OctreeNode::new();
-        }
-
-        // Check if all children are empty
-        let all_children_empty = node
-            .children
-            .as_ref()
-            .unwrap()
-            .iter()
-            .all(|child| child.is_empty());
-
-        if all_children_empty {
-            node.children = None;
-            node.is_leaf = true;
-            return node.voxel.is_none();
-        }
-        false
-    }
 
     /// Grow the octree so that the given world-space point fits within the root.
     /// The previous root becomes a child of the new root without re-inserting every voxel.
