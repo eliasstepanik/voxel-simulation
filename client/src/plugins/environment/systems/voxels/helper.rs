@@ -1,8 +1,8 @@
-use bevy::prelude::*;
 use crate::plugins::environment::systems::voxels::structure::*;
+use bevy::prelude::*;
 
 impl SparseVoxelOctree {
-    pub fn ray_intersects_aabb(&self,ray: &Ray, aabb: &AABB) -> bool {
+    pub fn ray_intersects_aabb(&self, ray: &Ray, aabb: &AABB) -> bool {
         let inv_dir = 1.0 / ray.direction;
         let t1 = (aabb.min - ray.origin) * inv_dir;
         let t2 = (aabb.max - ray.origin) * inv_dir;
@@ -16,13 +16,11 @@ impl SparseVoxelOctree {
         t_enter <= t_exit && t_exit >= 0.0
     }
 
-
     /// Returns the size of one voxel at the given depth.
     pub fn get_spacing_at_depth(&self, depth: u32) -> f32 {
         let effective = depth.min(self.max_depth);
         self.size / 2.0_f32.powi(effective as i32)
     }
-
 
     /// Center-based: [-size/2..+size/2]. Shift +half_size => [0..size], floor, shift back.
     pub fn normalize_to_voxel_at_depth(&self, position: Vec3, depth: u32) -> Vec3 {
@@ -42,7 +40,6 @@ impl SparseVoxelOctree {
         // Convert the normalized voxel center back to world space.
         voxel_center * self.size - Vec3::splat(half_size) + self.center
     }
-
 
     pub fn compute_child_bounds(&self, bounds: &AABB, index: usize) -> AABB {
         let min = bounds.min;
@@ -126,69 +123,50 @@ impl SparseVoxelOctree {
         (local_pos - Vec3::splat(0.5)) * self.size + self.center
     }
 
-
-
     /// Helper function to recursively traverse the octree to a specific depth.
     pub(crate) fn get_node_at_depth(
-        node: &OctreeNode,
-        x: f32,
-        y: f32,
-        z: f32,
-        depth: u32,
+        mut node: &OctreeNode,
+        mut x: f32,
+        mut y: f32,
+        mut z: f32,
+        mut depth: u32,
     ) -> Option<&OctreeNode> {
-        if depth == 0 {
-            return Some(node); // We've reached the desired depth
-        }
-
-        if let Some(ref children) = node.children {
-            // Determine which child to traverse into
-            let epsilon = 1e-6;
+        let epsilon = 1e-6;
+        while depth > 0 {
+            let children = node.children.as_ref()?;
             let index = ((x >= 0.5 - epsilon) as usize)
                 + ((y >= 0.5 - epsilon) as usize * 2)
                 + ((z >= 0.5 - epsilon) as usize * 4);
-
-            let adjust_coord = |coord: f32| {
+            let adjust = |coord: f32| {
                 if coord >= 0.5 - epsilon {
                     (coord - 0.5) * 2.0
                 } else {
                     coord * 2.0
                 }
             };
-
-            // Recurse into the correct child
-            Self::get_node_at_depth(
-                &children[index],
-                adjust_coord(x),
-                adjust_coord(y),
-                adjust_coord(z),
-                depth - 1,
-            )
-        } else {
-            None // Node has no children at this depth
+            x = adjust(x);
+            y = adjust(y);
+            z = adjust(z);
+            node = &children[index];
+            depth -= 1;
         }
+        Some(node)
     }
 
     pub fn has_volume(&self, node: &OctreeNode) -> bool {
-        // Check if this node is a leaf with a voxel
-        if node.is_leaf && node.voxel.is_some() {
-            return true;
-        }
-
-        // If the node has children, recursively check them
-        if let Some(children) = &node.children {
-            for child in children.iter() {
-                if self.has_volume(child) {
-                    return true; // If any child has a voxel, the chunk has volume
+        let mut stack = vec![node];
+        while let Some(n) = stack.pop() {
+            if n.is_leaf && n.voxel.is_some() {
+                return true;
+            }
+            if let Some(children) = &n.children {
+                for child in children.iter() {
+                    stack.push(child);
                 }
             }
         }
-
-        // If no voxel found in this node or its children
         false
     }
-
-
-
 }
 
 /// Returns the (face_normal, local_offset) for the given neighbor direction.
@@ -235,7 +213,7 @@ pub fn face_orientation(dx: f32, dy: f32, dz: f32, voxel_size_f: f32) -> (Vec3, 
         }
         // If the direction is not one of the 6 axis directions, you might skip or handle differently
         _ => {
-            // For safety, we can panic or return a default. 
+            // For safety, we can panic or return a default.
             // But typically you won't call face_orientation with an invalid direction
             panic!("Invalid face direction: ({}, {}, {})", dx, dy, dz);
         }
@@ -276,12 +254,12 @@ pub fn chunk_center_world(tree: &SparseVoxelOctree, key: ChunkKey) -> Vec3 {
 
 impl AABB {
     pub fn intersects_aabb(&self, other: &AABB) -> bool {
-        self.min.x <= other.max.x &&
-            self.max.x >= other.min.x &&
-            self.min.y <= other.max.y &&
-            self.max.y >= other.min.y &&
-            self.min.z <= other.max.z &&
-            self.max.z >= other.min.z
+        self.min.x <= other.max.x
+            && self.max.x >= other.min.x
+            && self.min.y <= other.max.y
+            && self.max.y >= other.min.y
+            && self.min.z <= other.max.z
+            && self.max.z >= other.min.z
     }
 
     pub fn center(&self) -> Vec3 {
@@ -316,9 +294,12 @@ impl SparseVoxelOctree {
         if node.is_leaf {
             if let Some(voxel) = &node.voxel {
                 let center = node_bounds.center();
-                if center.x >= min.x && center.x <= max.x &&
-                    center.y >= min.y && center.y <= max.y &&
-                    center.z >= min.z && center.z <= max.z
+                if center.x >= min.x
+                    && center.x <= max.x
+                    && center.y >= min.y
+                    && center.y <= max.y
+                    && center.z >= min.z
+                    && center.z <= max.z
                 {
                     out.push((center, *voxel));
                 }
