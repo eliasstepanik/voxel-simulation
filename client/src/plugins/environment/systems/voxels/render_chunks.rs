@@ -103,7 +103,6 @@ pub fn rebuild_dirty_chunks(
                         if let Some(mesh) = meshes.get_mut(&mesh_h) {
                             *mesh = new_mesh;
                         }
-                        commands.entity(ent).insert(Transform::from_translation(origin));
                         spawned.0.insert(key, ent);
                     }
                     None => {
@@ -125,7 +124,7 @@ pub fn rebuild_dirty_chunks(
                         .spawn((
                             Mesh3d::from(mesh_h.clone()),
                             MeshMaterial3d(mat_h.clone()),
-                            Transform::from_translation(origin),
+                            Transform::default(),
                             GridCell::ZERO,
                             Chunk {
                                 key,

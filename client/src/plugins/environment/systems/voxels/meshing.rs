@@ -479,7 +479,7 @@ pub(crate) fn mesh_chunk(
                     }
 
                     let size = Vec2::new(width as f32 * step, height as f32 * step);
-                    push_quad(base - origin, size, face_normal, u_vec, v_vec, tex_id);
+                    push_quad(base, size, face_normal, u_vec, v_vec, tex_id);
                 }
             }
         }
