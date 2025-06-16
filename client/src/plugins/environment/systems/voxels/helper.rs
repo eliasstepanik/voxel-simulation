@@ -275,42 +275,36 @@ impl SparseVoxelOctree {
             max: self.center + Vec3::splat(half_size),
         };
         let mut voxels = Vec::new();
-        self.collect_voxels_in_region_recursive(&self.root, root_bounds, min, max, &mut voxels);
-        voxels
-    }
+        let mut stack = vec![(&self.root, root_bounds)];
 
-    fn collect_voxels_in_region_recursive(
-        &self,
-        node: &OctreeNode,
-        node_bounds: AABB,
-        min: Vec3,
-        max: Vec3,
-        out: &mut Vec<(Vec3, Voxel)>,
-    ) {
-        if !node_bounds.intersects_aabb(&AABB { min, max }) {
-            return;
-        }
+        while let Some((node, bounds)) = stack.pop() {
+            if !bounds.intersects_aabb(&AABB { min, max }) {
+                continue;
+            }
 
-        if node.is_leaf {
-            if let Some(voxel) = &node.voxel {
-                let center = node_bounds.center();
-                if center.x >= min.x
-                    && center.x <= max.x
-                    && center.y >= min.y
-                    && center.y <= max.y
-                    && center.z >= min.z
-                    && center.z <= max.z
-                {
-                    out.push((center, *voxel));
+            if node.is_leaf {
+                if let Some(voxel) = &node.voxel {
+                    let center = bounds.center();
+                    if center.x >= min.x
+                        && center.x <= max.x
+                        && center.y >= min.y
+                        && center.y <= max.y
+                        && center.z >= min.z
+                        && center.z <= max.z
+                    {
+                        voxels.push((center, *voxel));
+                    }
+                }
+            }
+
+            if let Some(children) = &node.children {
+                for (i, child) in children.iter().enumerate() {
+                    let child_bounds = self.compute_child_bounds(&bounds, i);
+                    stack.push((child, child_bounds));
                 }
             }
         }
 
-        if let Some(children) = &node.children {
-            for (i, child) in children.iter().enumerate() {
-                let child_bounds = self.compute_child_bounds(&node_bounds, i);
-                self.collect_voxels_in_region_recursive(child, child_bounds, min, max, out);
-            }
-        }
+        voxels
     }
 }

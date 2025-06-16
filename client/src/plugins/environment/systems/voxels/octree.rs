@@ -456,63 +456,35 @@ impl SparseVoxelOctree {
             min: self.center - Vec3::splat(half_size),
             max: self.center + Vec3::splat(half_size),
         };
-        self.raycast_recursive(&self.root, ray, &root_bounds, 0)
-    }
 
-    fn raycast_recursive(
-        &self,
-        node: &OctreeNode,
-        ray: &Ray,
-        bounds: &AABB,
-        depth: u32,
-    ) -> Option<(f32, f32, f32, u32, Vec3)> {
-        // Check if the ray intersects this node's bounding box
-        if let Some((t_enter, _, normal)) = self.ray_intersects_aabb_with_normal(ray, bounds) {
-            // If this is a leaf node and contains a voxel, return it
-            if node.is_leaf && node.voxel.is_some() {
-                // Compute the exact hit position
-                let hit_position = ray.origin + ray.direction * t_enter;
+        let mut stack = vec![(&self.root, root_bounds, 0u32)];
+        let mut best: Option<(Vec3, u32, Vec3, f32)> = None; // position, depth, normal, t
 
-                // Return the hit position along with depth and normal
-                return Some((
-                    hit_position.x as f32,
-                    hit_position.y as f32,
-                    hit_position.z as f32,
-                    depth,
-                    normal,
-                ));
-            }
-
-            // If the node has children, traverse them
-            if let Some(ref children) = node.children {
-                // For each child, compute its bounding box and recurse
-                let mut hits = Vec::new();
-                for (i, child) in children.iter().enumerate() {
-                    let child_bounds = self.compute_child_bounds(bounds, i);
-                    if let Some(hit) = self.raycast_recursive(child, ray, &child_bounds, depth + 1)
-                    {
-                        hits.push(hit);
+        while let Some((node, bounds, depth)) = stack.pop() {
+            if let Some((t_enter, _t_exit, normal)) =
+                self.ray_intersects_aabb_with_normal(ray, &bounds)
+            {
+                if node.is_leaf && node.voxel.is_some() {
+                    let hit_pos = ray.origin + ray.direction * t_enter;
+                    if let Some((_, _, _, best_t)) = best {
+                        if t_enter < best_t {
+                            best = Some((hit_pos, depth, normal, t_enter));
+                        }
+                    } else {
+                        best = Some((hit_pos, depth, normal, t_enter));
                     }
                 }
-                // Return the closest hit, if any
-                if !hits.is_empty() {
-                    hits.sort_by(|a, b| {
-                        let dist_a = ((a.0 as f32 - ray.origin.x).powi(2)
-                            + (a.1 as f32 - ray.origin.y).powi(2)
-                            + (a.2 as f32 - ray.origin.z).powi(2))
-                        .sqrt();
-                        let dist_b = ((b.0 as f32 - ray.origin.x).powi(2)
-                            + (b.1 as f32 - ray.origin.y).powi(2)
-                            + (b.2 as f32 - ray.origin.z).powi(2))
-                        .sqrt();
-                        dist_a.partial_cmp(&dist_b).unwrap()
-                    });
-                    return Some(hits[0]);
+
+                if let Some(children) = &node.children {
+                    for (i, child) in children.iter().enumerate() {
+                        let child_bounds = self.compute_child_bounds(&bounds, i);
+                        stack.push((child, child_bounds, depth + 1));
+                    }
                 }
             }
         }
 
-        None
+        best.map(|(pos, depth, normal, _)| (pos.x, pos.y, pos.z, depth, normal))
     }
 
     /// Save the octree to a file using bincode serialization.
