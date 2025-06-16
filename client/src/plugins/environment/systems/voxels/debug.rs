@@ -17,76 +17,38 @@ pub fn visualize_octree_system(
             Color::srgba(1.0, 1.0, 0.0, 0.15),
         );
 
-        // Recursively draw children:
-        // Start from depth=0. The node at depth=0 has bounding side = octree.size.
-        visualize_recursive_center(
-            &mut gizmos,
-            &octree.root,
-            octree.center, // center of root in world
-            octree.size,
-            0,
-            octree.max_depth,
-        );
-    }
-}
-
-/// Recursively draws cuboids for each node.
-/// We follow the same indexing as insert_recursive, i.e. bit patterns:
-/// i=0 => child in (-x,-y,-z) quadrant,
-/// i=1 => (+x,-y,-z), i=2 => (-x,+y,-z), etc.
-fn visualize_recursive_center(
-    gizmos: &mut Gizmos,
-    node: &OctreeNode,
-    parent_center: Vec3,
-    parent_size: f32,
-    depth: u32,
-    max_depth: u32,
-) {
-    if depth >= max_depth {
-        return;
-    }
-    if let Some(children) = &node.children {
-        // Each child is half the parent’s size
-        let child_size = parent_size * 0.5;
-        let half = child_size * 0.5;
-
-        for (i, child) in children.iter().enumerate() {
-            // For i in [0..8], bits: x=1, y=2, z=4
-            let offset_x = if (i & 1) != 0 { half } else { -half };
-            let offset_y = if (i & 2) != 0 { half } else { -half };
-            let offset_z = if (i & 4) != 0 { half } else { -half };
-
-            let child_center = parent_center + Vec3::new(offset_x, offset_y, offset_z);
-
-            // Draw the child bounding box
-            gizmos.cuboid(
-                Transform::from_translation(child_center).with_scale(Vec3::splat(child_size)),
-                Color::srgba(0.5, 1.0, 0.5, 0.15), // greenish
-            );
-
-            // Recurse
-            visualize_recursive_center(
-                gizmos,
-                child,
-                child_center,
-                child_size,
-                depth + 1,
-                max_depth,
-            );
-        }
-    } else {
-        // If node.is_leaf && node.voxel.is_some(), draw a smaller marker
-        if node.is_leaf {
-            if let Some(voxel) = node.voxel {
-                // We'll choose a size that's a fraction of the parent's size.
-                // For example, 25% of the parent bounding box dimension.
-                let leaf_size = parent_size * 0.25;
-
-                // Draw a small cuboid at the same center as the parent node.
-                gizmos.cuboid(
-                    Transform::from_translation(parent_center).with_scale(Vec3::splat(leaf_size)),
-                    Color::WHITE,
-                );
+        // Walk the octree iteratively to avoid deep recursion when the tree
+        // grows large.
+        let mut stack = vec![(&octree.root, octree.center, octree.size, 0u32)];
+        while let Some((node, parent_center, parent_size, depth)) = stack.pop() {
+            if depth >= octree.max_depth {
+                continue;
+            }
+            if let Some(children) = &node.children {
+                let child_size = parent_size * 0.5;
+                let half = child_size * 0.5;
+                for (i, child) in children.iter().enumerate() {
+                    let offset_x = if (i & 1) != 0 { half } else { -half };
+                    let offset_y = if (i & 2) != 0 { half } else { -half };
+                    let offset_z = if (i & 4) != 0 { half } else { -half };
+                    let child_center =
+                        parent_center + Vec3::new(offset_x, offset_y, offset_z);
+                    gizmos.cuboid(
+                        Transform::from_translation(child_center)
+                            .with_scale(Vec3::splat(child_size)),
+                        Color::srgba(0.5, 1.0, 0.5, 0.15),
+                    );
+                    stack.push((child, child_center, child_size, depth + 1));
+                }
+            } else if node.is_leaf {
+                if node.voxel.is_some() {
+                    let leaf_size = parent_size * 0.25;
+                    gizmos.cuboid(
+                        Transform::from_translation(parent_center)
+                            .with_scale(Vec3::splat(leaf_size)),
+                        Color::WHITE,
+                    );
+                }
             }
         }
     }
