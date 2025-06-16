@@ -273,33 +273,46 @@ impl SparseVoxelOctree {
         false
     }
 
+    /// Grow the octree so that the given world-space point fits within the root.
+    /// The previous root becomes a child of the new root without re-inserting every voxel.
     fn expand_root(&mut self, x: f32, y: f32, z: f32) {
         info!("Root expanding ...");
 
-        // Save the old root
         let old_root = std::mem::replace(&mut self.root, OctreeNode::new());
+        let old_center = self.center;
+        let half = self.size * 0.5;
 
-        // Determine which child of the new root the previous root should occupy.
-        // The root's center remains unchanged; only its size doubles so that all
-        // existing voxels stay in place.
-        let mut index = 0usize;
-        if x < self.center.x {
-            index |= 1;
+        // Determine the direction to shift the center. The old root occupies the opposite child.
+        let mut child_index = 0usize;
+        if x >= old_center.x {
+            self.center.x += half;
+        } else {
+            self.center.x -= half;
+            child_index |= 1;
         }
-        if y < self.center.y {
-            index |= 2;
+        if y >= old_center.y {
+            self.center.y += half;
+        } else {
+            self.center.y -= half;
+            child_index |= 2;
         }
-        if z < self.center.z {
-            index |= 4;
+        if z >= old_center.z {
+            self.center.z += half;
+        } else {
+            self.center.z -= half;
+            child_index |= 4;
         }
 
         self.size *= 2.0;
         self.max_depth += 1;
 
         let mut children = Box::new(core::array::from_fn(|_| OctreeNode::new()));
-        children[index] = old_root;
+        children[child_index] = old_root;
         self.root.children = Some(children);
         self.root.is_leaf = false;
+
+        // Rebuild caches so chunk bookkeeping stays consistent with the new center.
+        self.rebuild_cache();
     }
 
     /// Helper: Collect all voxels from a given octree node recursively.
