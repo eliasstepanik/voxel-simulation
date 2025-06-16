@@ -1,7 +1,7 @@
 use crate::plugins::environment::systems::voxels::helper::chunk_key_from_world;
 use crate::plugins::environment::systems::voxels::structure::{
-    AABB, CHUNK_SIZE, ChunkKey, DirtyVoxel, NEIGHBOR_OFFSETS, OctreeNode, Ray, SparseVoxelOctree,
-    Voxel,
+    ChunkKey, DirtyVoxel, OctreeNode, Ray, SparseVoxelOctree, Voxel, AABB, CHUNK_SIZE,
+    NEIGHBOR_OFFSETS,
 };
 use bevy::asset::Assets;
 use bevy::math::{DQuat, DVec3};
@@ -79,7 +79,13 @@ impl SparseVoxelOctree {
             let children = node.children.as_mut().unwrap();
             node = &mut children[index];
 
-            let adjust = |c: f32| if c >= 0.5 - epsilon { (c - 0.5) * 2.0 } else { c * 2.0 };
+            let adjust = |c: f32| {
+                if c >= 0.5 - epsilon {
+                    (c - 0.5) * 2.0
+                } else {
+                    c * 2.0
+                }
+            };
             pos = Vec3::new(adjust(pos.x), adjust(pos.y), adjust(pos.z));
             depth -= 1;
         }
@@ -152,7 +158,13 @@ impl SparseVoxelOctree {
                 let children = (*node).children.as_mut().unwrap();
                 node = &mut children[idx] as *mut OctreeNode;
 
-                let adjust = |c: f32| if c >= 0.5 - eps { (c - 0.5) * 2.0 } else { c * 2.0 };
+                let adjust = |c: f32| {
+                    if c >= 0.5 - eps {
+                        (c - 0.5) * 2.0
+                    } else {
+                        c * 2.0
+                    }
+                };
                 pos = Vec3::new(adjust(pos.x), adjust(pos.y), adjust(pos.z));
                 depth -= 1;
             }
@@ -289,7 +301,6 @@ impl SparseVoxelOctree {
         }
     }
 
-
     /// Grow the octree so that the given world-space point fits within the root.
     /// The previous root becomes a child of the new root without re-inserting every voxel.
     fn expand_root(&mut self, x: f32, y: f32, z: f32) {
@@ -332,55 +343,53 @@ impl SparseVoxelOctree {
         self.rebuild_cache();
     }
 
-    /// Helper: Collect all voxels from a given octree node recursively.
+    /// Helper: Collect all voxels from a given octree node without recursion.
     /// The coordinate system here assumes the node covers [–old_size/2, +old_size/2] in each axis.
-    fn collect_voxels_from_node(node: &OctreeNode, old_size: f32, center: Vec3) -> Vec<(Vec3, Voxel, u32)> {
+    fn collect_voxels_from_node(
+        node: &OctreeNode,
+        old_size: f32,
+        center: Vec3,
+    ) -> Vec<(Vec3, Voxel, u32)> {
         let mut voxels = Vec::new();
-        Self::collect_voxels_recursive(
-            node,
+        let mut stack = Vec::new();
+        stack.push((
+            node as *const OctreeNode,
             center.x - old_size / 2.0,
             center.y - old_size / 2.0,
             center.z - old_size / 2.0,
             old_size,
             0,
-            &mut voxels,
-        );
-        voxels
-    }
+        ));
 
-    fn collect_voxels_recursive(
-        node: &OctreeNode,
-        x: f32,
-        y: f32,
-        z: f32,
-        size: f32,
-        depth: u32,
-        out: &mut Vec<(Vec3, Voxel, u32)>,
-    ) {
-        if node.is_leaf {
-            if let Some(voxel) = node.voxel {
-                // Compute the center of this node's region.
-                let center = Vec3::new(x + size / 2.0, y + size / 2.0, z + size / 2.0);
-                out.push((center, voxel, depth));
+        while let Some((ptr, x, y, z, size, depth)) = stack.pop() {
+            let node = unsafe { &*ptr };
+
+            if node.is_leaf {
+                if let Some(voxel) = node.voxel {
+                    let center = Vec3::new(x + size / 2.0, y + size / 2.0, z + size / 2.0);
+                    voxels.push((center, voxel, depth));
+                }
+            }
+
+            if let Some(children) = &node.children {
+                let half = size / 2.0;
+                for (i, child) in children.iter().enumerate() {
+                    let offset_x = if (i & 1) != 0 { half } else { 0.0 };
+                    let offset_y = if (i & 2) != 0 { half } else { 0.0 };
+                    let offset_z = if (i & 4) != 0 { half } else { 0.0 };
+                    stack.push((
+                        child as *const OctreeNode,
+                        x + offset_x,
+                        y + offset_y,
+                        z + offset_z,
+                        half,
+                        depth + 1,
+                    ));
+                }
             }
         }
-        if let Some(children) = &node.children {
-            let half = size / 2.0;
-            for (i, child) in children.iter().enumerate() {
-                let offset_x = if (i & 1) != 0 { half } else { 0.0 };
-                let offset_y = if (i & 2) != 0 { half } else { 0.0 };
-                let offset_z = if (i & 4) != 0 { half } else { 0.0 };
-                Self::collect_voxels_recursive(
-                    child,
-                    x + offset_x,
-                    y + offset_y,
-                    z + offset_z,
-                    half,
-                    depth + 1,
-                    out,
-                );
-            }
-        }
+
+        voxels
     }
 
     pub fn traverse(&self) -> Vec<(Vec3, u32)> {
@@ -580,10 +589,33 @@ impl SparseVoxelOctree {
         self.dirty_chunks.clear();
         self.occupied_chunks.clear();
 
-        let voxels = Self::collect_voxels_from_node(&self.root, self.size, self.center);
-        for (pos, _voxel, _depth) in voxels {
-            let key = chunk_key_from_world(self, pos);
-            self.occupied_chunks.insert(key);
+        let mut stack = Vec::new();
+        stack.push((
+            &self.root as *const OctreeNode,
+            self.center - Vec3::splat(self.size / 2.0),
+            self.size,
+        ));
+
+        while let Some((ptr, origin, size)) = stack.pop() {
+            let node = unsafe { &*ptr };
+
+            if node.is_leaf && node.voxel.is_some() {
+                let center = origin + Vec3::splat(size / 2.0);
+                let key = chunk_key_from_world(self, center);
+                self.occupied_chunks.insert(key);
+            }
+
+            if let Some(children) = &node.children {
+                let half = size / 2.0;
+                for (i, child) in children.iter().enumerate() {
+                    let offset = Vec3::new(
+                        if (i & 1) != 0 { half } else { 0.0 },
+                        if (i & 2) != 0 { half } else { 0.0 },
+                        if (i & 4) != 0 { half } else { 0.0 },
+                    );
+                    stack.push((child as *const OctreeNode, origin + offset, half));
+                }
+            }
         }
     }
 }
