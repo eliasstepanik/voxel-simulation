@@ -1,7 +1,7 @@
 use crate::plugins::environment::systems::voxels::helper::chunk_key_from_world;
 use crate::plugins::environment::systems::voxels::structure::{
-    AABB, CHUNK_SIZE, ChunkKey, DirtyVoxel, NEIGHBOR_OFFSETS, OctreeNode, Ray, SparseVoxelOctree,
-    Voxel,
+    ChunkKey, DirtyVoxel, OctreeNode, Ray, SparseVoxelOctree, Voxel, AABB, CHUNK_SIZE,
+    NEIGHBOR_OFFSETS,
 };
 use bevy::asset::Assets;
 use bevy::math::{DQuat, DVec3};
@@ -13,6 +13,9 @@ use std::collections::{HashMap, HashSet};
 use std::io;
 use std::path::Path;
 
+/// Maximum allowed depth for the octree to avoid stack overflows.
+pub const MAX_DEPTH_LIMIT: u32 = 48;
+
 impl SparseVoxelOctree {
     /// Creates a new octree with the specified max depth, size, and wireframe visibility.
     pub fn new(
@@ -22,6 +25,10 @@ impl SparseVoxelOctree {
         show_world_grid: bool,
         show_chunks: bool,
     ) -> Self {
+        assert!(
+            max_depth <= MAX_DEPTH_LIMIT,
+            "initial depth exceeds MAX_DEPTH_LIMIT"
+        );
         Self {
             root: OctreeNode::new(),
             max_depth,
@@ -41,6 +48,11 @@ impl SparseVoxelOctree {
 
         // Expand as needed using the denormalized position.
         while !self.contains(world_center.x, world_center.y, world_center.z) {
+            assert!(
+                self.max_depth < MAX_DEPTH_LIMIT,
+                "octree exceeded maximum depth of {}",
+                MAX_DEPTH_LIMIT
+            );
             self.expand_root(world_center.x, world_center.y, world_center.z);
             // Recompute aligned and world_center after expansion.
             aligned = self.normalize_to_voxel_at_depth(position, self.max_depth);
@@ -276,6 +288,11 @@ impl SparseVoxelOctree {
     /// Grow the octree so that the given world-space point fits within the root.
     /// The previous root becomes a child of the new root without re-inserting every voxel.
     fn expand_root(&mut self, x: f32, y: f32, z: f32) {
+        assert!(
+            self.max_depth < MAX_DEPTH_LIMIT,
+            "octree exceeded maximum depth of {}",
+            MAX_DEPTH_LIMIT
+        );
         info!("Root expanding ...");
 
         let old_root = std::mem::replace(&mut self.root, OctreeNode::new());
@@ -304,7 +321,6 @@ impl SparseVoxelOctree {
         }
 
         self.size *= 2.0;
-        self.max_depth += 1;
 
         let mut children = Box::new(core::array::from_fn(|_| OctreeNode::new()));
         children[child_index] = old_root;
@@ -317,7 +333,11 @@ impl SparseVoxelOctree {
 
     /// Helper: Collect all voxels from a given octree node recursively.
     /// The coordinate system here assumes the node covers [–old_size/2, +old_size/2] in each axis.
-    fn collect_voxels_from_node(node: &OctreeNode, old_size: f32, center: Vec3) -> Vec<(Vec3, Voxel, u32)> {
+    fn collect_voxels_from_node(
+        node: &OctreeNode,
+        old_size: f32,
+        center: Vec3,
+    ) -> Vec<(Vec3, Voxel, u32)> {
         let mut voxels = Vec::new();
         Self::collect_voxels_recursive(
             node,
