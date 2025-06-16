@@ -55,43 +55,34 @@ impl SparseVoxelOctree {
         self.mark_neighbor_chunks_dirty(position);
         self.occupied_chunks.insert(key);
 
-        Self::insert_recursive(&mut self.root, aligned, voxel, self.max_depth);
-    }
-
-    fn insert_recursive(node: &mut OctreeNode, position: Vec3, voxel: Voxel, depth: u32) {
-        if depth == 0 {
-            node.voxel = Some(voxel);
-            node.is_leaf = true;
-            return;
-        }
+        // iterative insertion to avoid deep recursion when the tree grows
+        let mut node = &mut self.root;
+        let mut pos = aligned;
+        let mut depth = self.max_depth;
         let epsilon = 1e-6;
-        // Determine octant index by comparing with 0.5
-        let index = ((position.x >= 0.5 - epsilon) as usize)
-            + ((position.y >= 0.5 - epsilon) as usize * 2)
-            + ((position.z >= 0.5 - epsilon) as usize * 4);
-
-        // If there are no children, create them.
-        if node.children.is_none() {
-            node.children = Some(Box::new(core::array::from_fn(|_| OctreeNode::new())));
-            node.is_leaf = false;
-        }
-        if let Some(ref mut children) = node.children {
-            // Adjust coordinate into the child’s [0, 1] range.
-            let adjust_coord = |coord: f32| {
+        while depth > 0 {
+            if node.children.is_none() {
+                node.children = Some(Box::new(core::array::from_fn(|_| OctreeNode::new())));
+                node.is_leaf = false;
+            }
+            let index = ((pos.x >= 0.5 - epsilon) as usize)
+                + ((pos.y >= 0.5 - epsilon) as usize * 2)
+                + ((pos.z >= 0.5 - epsilon) as usize * 4);
+            let adjust = |coord: f32| {
                 if coord >= 0.5 - epsilon {
                     (coord - 0.5) * 2.0
                 } else {
                     coord * 2.0
                 }
             };
-            let child_pos = Vec3::new(
-                adjust_coord(position.x),
-                adjust_coord(position.y),
-                adjust_coord(position.z),
-            );
-            Self::insert_recursive(&mut children[index], child_pos, voxel, depth - 1);
+            pos = Vec3::new(adjust(pos.x), adjust(pos.y), adjust(pos.z));
+            node = node.children.as_mut().unwrap().get_mut(index).unwrap();
+            depth -= 1;
         }
+        node.voxel = Some(voxel);
+        node.is_leaf = true;
     }
+
 
     pub fn remove(&mut self, position: Vec3) {
         let aligned = self.normalize_to_voxel_at_depth(position, self.max_depth);
@@ -216,61 +207,73 @@ impl SparseVoxelOctree {
         }
     }
 
-    fn remove_recursive(node: &mut OctreeNode, x: f32, y: f32, z: f32, depth: u32) -> bool {
-        if depth == 0 {
-            if node.voxel.is_some() {
-                node.voxel = None;
-                node.is_leaf = false;
-                return true;
-            } else {
-                return false;
+    fn remove_recursive(node: &mut OctreeNode, mut x: f32, mut y: f32, mut z: f32, mut depth: u32) -> bool {
+        let epsilon = 1e-6;
+        let mut path: Vec<(*mut OctreeNode, usize)> = Vec::new();
+        let mut current: *mut OctreeNode = node;
+        // descend to the target node, recording the path
+        while depth > 0 {
+            unsafe {
+                if (*current).children.is_none() {
+                    return false;
+                }
+                let index = ((x >= 0.5 - epsilon) as usize)
+                    + ((y >= 0.5 - epsilon) as usize * 2)
+                    + ((z >= 0.5 - epsilon) as usize * 4);
+                path.push((current, index));
+                let adjust = |coord: f32| {
+                    if coord >= 0.5 - epsilon {
+                        (coord - 0.5) * 2.0
+                    } else {
+                        coord * 2.0
+                    }
+                };
+                let children = (*current).children.as_mut().unwrap();
+                current = &mut children[index];
+                x = adjust(x);
+                y = adjust(y);
+                z = adjust(z);
+                depth -= 1;
             }
         }
 
-        if node.children.is_none() {
+        let mut removed = false;
+        unsafe {
+            if (*current).voxel.is_some() {
+                (*current).voxel = None;
+                (*current).is_leaf = false;
+                removed = true;
+            }
+        }
+
+        if !removed {
             return false;
         }
-        let epsilon = 1e-6;
-        let index = ((x >= 0.5 - epsilon) as usize)
-            + ((y >= 0.5 - epsilon) as usize * 2)
-            + ((z >= 0.5 - epsilon) as usize * 4);
 
-        let adjust_coord = |coord: f32| {
-            if coord >= 0.5 - epsilon {
-                (coord - 0.5) * 2.0
-            } else {
-                coord * 2.0
+        // walk back up pruning empty children
+        while let Some((ptr, idx)) = path.pop() {
+            unsafe {
+                let parent = &mut *ptr;
+                let child = &mut parent.children.as_mut().unwrap()[idx];
+                if child.is_empty() {
+                    parent.children.as_mut().unwrap()[idx] = OctreeNode::new();
+                }
+                let all_empty = parent
+                    .children
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .all(|c| c.is_empty());
+                if all_empty {
+                    parent.children = None;
+                    parent.is_leaf = true;
+                } else {
+                    break;
+                }
+                current = parent;
             }
-        };
-
-        let child = &mut node.children.as_mut().unwrap()[index];
-        let should_prune_child = Self::remove_recursive(
-            child,
-            adjust_coord(x),
-            adjust_coord(y),
-            adjust_coord(z),
-            depth - 1,
-        );
-
-        if should_prune_child {
-            // remove the child node
-            node.children.as_mut().unwrap()[index] = OctreeNode::new();
         }
-
-        // Check if all children are empty
-        let all_children_empty = node
-            .children
-            .as_ref()
-            .unwrap()
-            .iter()
-            .all(|child| child.is_empty());
-
-        if all_children_empty {
-            node.children = None;
-            node.is_leaf = true;
-            return node.voxel.is_none();
-        }
-        false
+        true
     }
 
     /// Grow the octree so that the given world-space point fits within the root.
