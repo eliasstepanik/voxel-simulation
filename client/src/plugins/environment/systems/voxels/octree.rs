@@ -454,7 +454,7 @@ impl SparseVoxelOctree {
         depth: u32,
     ) -> bool {
         let aligned = self.normalize_to_voxel_at_depth(position, depth);
-        let voxel_count = 2_u32.pow(depth) as f32;
+        let voxel_count = 2.0_f32.powi(depth as i32);
         // Normalized voxel size is 1/voxel_count
         let norm_voxel_size = 1.0 / voxel_count;
 

@@ -20,7 +20,7 @@ impl SparseVoxelOctree {
     /// Returns the size of one voxel at the given depth.
     pub fn get_spacing_at_depth(&self, depth: u32) -> f32 {
         let effective = depth.min(self.max_depth);
-        self.size / (2_u32.pow(effective)) as f32
+        self.size / 2.0_f32.powi(effective as i32)
     }
 
 
@@ -31,7 +31,7 @@ impl SparseVoxelOctree {
         // Shift to [0, self.size] taking the octree centre into account
         let shifted = (position - (self.center - Vec3::splat(half_size))) / self.size;
         // Determine the number of voxels along an edge at the given depth.
-        let voxel_count = 2_u32.pow(depth) as f32;
+        let voxel_count = 2.0_f32.powi(depth as i32);
         // Get the voxel index (as a float) and then compute the center in normalized space.
         let voxel_index = (shifted * voxel_count).floor();
         let voxel_center = (voxel_index + Vec3::splat(0.5)) / voxel_count;
