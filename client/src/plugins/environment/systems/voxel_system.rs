@@ -6,68 +6,77 @@ use noise::{NoiseFn, Perlin};
 use rand::{thread_rng, Rng};
 use rayon::prelude::*;
 use std::path::Path;
-use std::thread;
+use bevy::tasks::{AsyncComputeTaskPool, Task};
+use futures_lite::future;
+
+#[derive(Resource)]
+pub struct OctreeGenerationTask {
+    pub task: Task<SparseVoxelOctree>,
+}
 
 
 
 
-pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
-    let builder = thread::Builder::new()
-        .name("octree-build".into())
-        // Reduced stack size now that octree operations are iterative
-        .stack_size(8 * 1024 * 1024);
+pub fn setup(mut commands: Commands) {
+    let task_pool = AsyncComputeTaskPool::get();
+    let task: Task<SparseVoxelOctree> = task_pool.spawn(async move {
+        // Octree parameters
+        let unit_size = 1.0_f32;
+        let octree_base_size = 64.0 * unit_size;
+        let octree_depth = 10;
 
-    let handle = builder
-        .spawn(move || {
-            // Octree parameters
-            let unit_size = 1.0_f32;
-            let octree_base_size = 64.0 * unit_size;
-            let octree_depth = 10;
+        let path = Path::new("octree.bin");
 
-            let path = Path::new("octree.bin");
-
-            let mut octree = if Path::new(path).exists() {
-                match SparseVoxelOctree::load_from_file(path) {
-                    Ok(tree) => tree,
-                    Err(err) => {
-                        error!("failed to load octree: {err}");
-                        SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false)
-                    }
+        let mut octree = if Path::new(path).exists() {
+            match SparseVoxelOctree::load_from_file(path) {
+                Ok(tree) => tree,
+                Err(err) => {
+                    error!("failed to load octree: {err}");
+                    SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false)
                 }
-            } else {
-                let mut tree =
-                    SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false);
-                // How many random spheres?
-                const NUM_SPHERES: usize = 15;
-                let mut rng = thread_rng();
+            }
+        } else {
+            let mut tree =
+                SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false);
+            // How many random spheres?
+            const NUM_SPHERES: usize = 15;
+            let mut rng = thread_rng();
 
-                for _ in 0..NUM_SPHERES {
-                    let center = Vec3::new(
-                        rng.gen_range(-500.0..500.0),
-                        rng.gen_range(-500.0..500.0),
-                        rng.gen_range(-500.0..500.0),
-                    );
+            for _ in 0..NUM_SPHERES {
+                let center = Vec3::new(
+                    rng.gen_range(-500.0..500.0),
+                    rng.gen_range(-500.0..500.0),
+                    rng.gen_range(-500.0..500.0),
+                );
 
-                    let radius = rng.gen_range(20..=200); // voxels
+                let radius = rng.gen_range(20..=200); // voxels
 
-                    generate_voxel_sphere_parallel(&mut tree, center, radius);
-                }
+                generate_voxel_sphere_parallel(&mut tree, center, radius);
+            }
 
-                /*generate_voxel_sphere(&mut tree, 200);*/
-                tree
-            };
+            /*generate_voxel_sphere(&mut tree, 200);*/
+            tree
+        };
 
-            octree
-        })
-        .expect("failed to spawn octree build thread")
-        .join();
-
-    let octree = handle.expect("Failed to join octree build thread");
-
-    // Attach octree to the scene graph
-    commands.entity(root.0).with_children(|parent| {
-        parent.spawn((Transform::default(), octree));
+        octree
     });
+
+    commands.insert_resource(OctreeGenerationTask { task });
+}
+
+pub fn poll_octree_task(
+    mut commands: Commands,
+    mut task_res: Option<ResMut<OctreeGenerationTask>>,
+    root: Res<RootGrid>,
+) {
+    if let Some(mut task_res) = task_res {
+        if let Some(octree) = future::block_on(future::poll_once(&mut task_res.task)) {
+            commands.entity(root.0).with_children(|parent| {
+                parent.spawn((Transform::default(), octree));
+            });
+            commands.remove_resource::<OctreeGenerationTask>();
+        }
+    }
 }
 
 
