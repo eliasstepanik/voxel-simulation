@@ -1,19 +1,18 @@
 use crate::plugins::big_space::big_space_plugin::RootGrid;
 use crate::plugins::environment::systems::voxels::structure::*;
-use rayon::prelude::*;
-use std::path::Path;
-use std::thread;
 use bevy::prelude::*;
 use bevy::render::mesh::*;
 use noise::{NoiseFn, Perlin};
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
+use rayon::prelude::*;
+use std::path::Path;
+use std::thread;
 
 pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
-
-
     let builder = thread::Builder::new()
         .name("octree-build".into())
-        .stack_size(64 * 4096 * 4096);
+        // Reduced stack size now that octree operations are iterative
+        .stack_size(8 * 1024 * 1024);
 
     let handle = builder
         .spawn(move || {
@@ -22,12 +21,9 @@ pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
             let octree_base_size = 64.0 * unit_size;
             let octree_depth = 10;
 
-
-
             let path = Path::new("octree.bin");
 
-
-            let mut octree = if Path::new(path).exists()  {
+            let mut octree = if Path::new(path).exists() {
                 match SparseVoxelOctree::load_from_file(path) {
                     Ok(tree) => tree,
                     Err(err) => {
@@ -36,7 +32,8 @@ pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
                     }
                 }
             } else {
-                let mut tree = SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false);
+                let mut tree =
+                    SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false);
                 // How many random spheres?
                 const NUM_SPHERES: usize = 5;
                 let mut rng = thread_rng();
@@ -48,7 +45,7 @@ pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
                         rng.gen_range(-1000.0..1000.0),
                     );
 
-                    let radius = rng.gen_range(20..=150);     // voxels
+                    let radius = rng.gen_range(20..=150); // voxels
 
                     generate_voxel_sphere_parallel(&mut tree, center, radius);
                 }
@@ -57,7 +54,6 @@ pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
                 tree
             };
 
-
             octree
         })
         .expect("failed to spawn octree build thread")
@@ -65,15 +61,11 @@ pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
 
     let octree = handle.expect("Failed to join octree build thread");
 
-
     // Attach octree to the scene graph
     commands.entity(root.0).with_children(|parent| {
         parent.spawn((Transform::default(), octree));
     });
 }
-
-
-
 
 pub fn generate_voxel_sphere_parallel(octree: &mut SparseVoxelOctree, center: Vec3, radius: i32) {
     let step = octree.get_spacing_at_depth(octree.max_depth);
@@ -145,7 +137,6 @@ fn generate_voxel_sphere(octree: &mut SparseVoxelOctree, center: Vec3, planet_ra
         }
     }
 }
-
 
 /// Inserts a 16x256x16 "column" of voxels into the octree at (0,0,0) corner.
 /// If you want it offset or centered differently, just adjust the for-loop ranges or offsets.
