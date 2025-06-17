@@ -8,6 +8,9 @@ use rayon::prelude::*;
 use std::path::Path;
 use std::thread;
 
+
+
+
 pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
     let builder = thread::Builder::new()
         .name("octree-build".into())
@@ -35,17 +38,17 @@ pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
                 let mut tree =
                     SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false);
                 // How many random spheres?
-                const NUM_SPHERES: usize = 5;
+                const NUM_SPHERES: usize = 15;
                 let mut rng = thread_rng();
 
                 for _ in 0..NUM_SPHERES {
                     let center = Vec3::new(
-                        rng.gen_range(-1000.0..1000.0),
-                        rng.gen_range(-1000.0..1000.0),
-                        rng.gen_range(-1000.0..1000.0),
+                        rng.gen_range(-500.0..500.0),
+                        rng.gen_range(-500.0..500.0),
+                        rng.gen_range(-500.0..500.0),
                     );
 
-                    let radius = rng.gen_range(20..=150); // voxels
+                    let radius = rng.gen_range(20..=200); // voxels
 
                     generate_voxel_sphere_parallel(&mut tree, center, radius);
                 }
@@ -66,6 +69,7 @@ pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
         parent.spawn((Transform::default(), octree));
     });
 }
+
 
 pub fn generate_voxel_sphere_parallel(octree: &mut SparseVoxelOctree, center: Vec3, radius: i32) {
     let step = octree.get_spacing_at_depth(octree.max_depth);
