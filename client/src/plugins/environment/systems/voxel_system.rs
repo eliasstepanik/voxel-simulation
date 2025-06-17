@@ -6,23 +6,22 @@ use noise::{NoiseFn, Perlin};
 use rand::{thread_rng, Rng};
 use rayon::prelude::*;
 use std::path::Path;
-use std::thread;
+use bevy::tasks::{AsyncComputeTaskPool, Task};
+use futures_lite::future;
+
+#[derive(Resource)]
+pub struct OctreeTask(pub Task<SparseVoxelOctree>);
 
 
 
 
-pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
-    let builder = thread::Builder::new()
-        .name("octree-build".into())
-        // Reduced stack size now that octree operations are iterative
-        .stack_size(8 * 1024 * 1024);
-
-    let handle = builder
-        .spawn(move || {
-            // Octree parameters
-            let unit_size = 1.0_f32;
-            let octree_base_size = 64.0 * unit_size;
-            let octree_depth = 10;
+pub fn setup(mut commands: Commands) {
+    let pool = AsyncComputeTaskPool::get();
+    let task: Task<SparseVoxelOctree> = pool.spawn(async move {
+        // Octree parameters
+        let unit_size = 1.0_f32;
+        let octree_base_size = 64.0 * unit_size;
+        let octree_depth = 10;
 
             let path = Path::new("octree.bin");
 
@@ -57,17 +56,10 @@ pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
                 tree
             };
 
-            octree
-        })
-        .expect("failed to spawn octree build thread")
-        .join();
-
-    let octree = handle.expect("Failed to join octree build thread");
-
-    // Attach octree to the scene graph
-    commands.entity(root.0).with_children(|parent| {
-        parent.spawn((Transform::default(), octree));
+        octree
     });
+
+    commands.insert_resource(OctreeTask(task));
 }
 
 
@@ -237,5 +229,22 @@ pub fn generate_solid_plane_with_noise(
                 octree.insert(position, voxel);
             }
         }
+    }
+}
+
+pub fn attach_octree_from_task(
+    mut commands: Commands,
+    mut task: Option<ResMut<OctreeTask>>,
+    root: Res<RootGrid>,
+) {
+    let Some(mut task) = task else {
+        return;
+    };
+
+    if let Some(octree) = future::block_on(future::poll_once(&mut task.0)) {
+        commands.entity(root.0).with_children(|parent| {
+            parent.spawn((Transform::default(), octree));
+        });
+        commands.remove_resource::<OctreeTask>();
     }
 }
