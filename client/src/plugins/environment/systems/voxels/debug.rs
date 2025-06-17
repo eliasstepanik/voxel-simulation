@@ -13,7 +13,7 @@ pub fn visualize_octree_system(
 
         // Draw a translucent cuboid for the root
         gizmos.cuboid(
-            Transform::from_translation(octree.center).with_scale(Vec3::splat(octree.size)),
+            Transform::from_translation(octree_tf.translation).with_scale(Vec3::splat(octree.size)),
             Color::srgba(1.0, 1.0, 0.0, 0.15),
         );
 
@@ -22,7 +22,7 @@ pub fn visualize_octree_system(
         visualize_recursive_center(
             &mut gizmos,
             &octree.root,
-            octree.center, // center of root in world
+            octree_tf.translation, // center of root in world
             octree.size,
             0,
             octree.max_depth,
@@ -103,9 +103,9 @@ pub fn draw_grid(
     };
     let camera_pos = camera_tf.translation;
 
-    for (octree, _octree_tf) in octree_query.iter() {
+    for (octree, octree_tf) in octree_query.iter() {
         let half_size = octree.size * 0.5;
-        let root_center = octree.center;
+        let root_center = octree_tf.translation;
 
         // Voxel spacing at max depth
         let spacing = octree.get_spacing_at_depth(octree.max_depth);

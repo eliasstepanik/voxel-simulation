@@ -2,71 +2,113 @@ use crate::plugins::big_space::big_space_plugin::RootGrid;
 use crate::plugins::environment::systems::voxels::structure::*;
 use crate::plugins::environment::systems::voxels::disk_backed_octree::DiskBackedOctree;
 use rayon::prelude::*;
-use std::path::Path;
-
+use std::path::{Path, PathBuf};
+use std::thread;
 use bevy::prelude::*;
 use bevy::render::mesh::*;
 use noise::{NoiseFn, Perlin};
 use rand::{Rng, thread_rng};
 
+
+
 pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
-    // Octree parameters
-    let unit_size = 1.0_f32;
-    let octree_base_size = 64.0 * unit_size;
-    let octree_depth = 10;
 
-    let octree = DiskBackedOctree::new("octree.bin", octree_depth, octree_base_size);
 
-    if !Path::new("octree.bin").exists() {
-        let _ = octree.with_octree(|tree| {
-            generate_voxel_sphere(tree, 200);
-        });
-    }
+    let builder = thread::Builder::new()
+        .name("octree-build".into())
+        .stack_size(64 * 4096 * 4096);
 
+    let handle = builder
+        .spawn(move || {
+            // Octree parameters
+            let unit_size = 1.0_f32;
+            let octree_base_size = 64.0 * unit_size;
+            let octree_depth = 10;
+
+
+            let mut octree = DiskBackedOctree::new("octree.bin", octree_depth, octree_base_size);
+
+            if !Path::new("octree.bin").exists() {
+                /*generate_voxel_sphere(tree, 200);*/
+                // How many random spheres?
+                const NUM_SPHERES: usize = 5;
+                let mut rng = thread_rng();
+
+                for _ in 0..NUM_SPHERES {
+                    let center = Vec3::new(
+                        rng.gen_range(-1000.0..1000.0),
+                        rng.gen_range(-1000.0..1000.0),
+                        rng.gen_range(-1000.0..1000.0),
+                    );
+
+                    let radius = rng.gen_range(100..=500);     // voxels
+
+                    generate_voxel_sphere_parallel(&mut octree, center, radius);
+                }
+
+
+            }
+
+            octree
+        })
+        .expect("failed to spawn octree build thread")
+        .join();
+    
+    let octree : DiskBackedOctree = handle.unwrap();
+    
     // Attach octree to the scene graph
     commands.entity(root.0).with_children(|parent| {
         parent.spawn((Transform::default(), octree));
     });
+
+
 }
 
+pub fn generate_voxel_sphere_parallel(octree: &mut DiskBackedOctree, center: Vec3, radius: i32) {
+
+    octree.with_octree(|tree| {
 
 
-pub fn generate_voxel_sphere_parallel(octree: &mut SparseVoxelOctree, center: Vec3, radius: i32) {
-    let step = octree.get_spacing_at_depth(octree.max_depth);
-    let radius_sq = radius * radius;
+        let step = tree.get_spacing_at_depth(tree.max_depth);
+        let radius_sq = radius * radius;
 
-    // 1. Collect voxel positions in parallel
-    let voxels: Vec<(Vec3, Voxel)> = (-radius..=radius)
-        .into_par_iter()
-        .flat_map_iter(|ix| {
-            let dx2 = ix * ix;
-            (-radius..=radius).flat_map(move |iy| {
-                let dy2 = iy * iy;
-                let r2_xy = dx2 + dy2;
+        // 1. Collect voxel positions in parallel
+        let voxels: Vec<(Vec3, Voxel)> = (-radius..=radius)
+            .into_par_iter()
+            .flat_map_iter(|ix| {
+                let dx2 = ix * ix;
+                (-radius..=radius).flat_map(move |iy| {
+                    let dy2 = iy * iy;
+                    let r2_xy = dx2 + dy2;
 
-                if r2_xy > radius_sq {
-                    return Vec::new(); // this (x,y) column is outside
-                }
+                    if r2_xy > radius_sq {
+                        return Vec::new(); // this (x,y) column is outside
+                    }
 
-                let max_z = ((radius_sq - r2_xy) as f32).sqrt() as i32;
-                (-max_z..=max_z)
-                    .map(move |iz| {
-                        let pos = Vec3::new(
-                            center.x + ix as f32 * step,
-                            center.y + iy as f32 * step,
-                            center.z + iz as f32 * step,
-                        );
-                        (pos, Voxel::random_sides())
-                    })
-                    .collect::<Vec<_>>()
+                    let max_z = ((radius_sq - r2_xy) as f32).sqrt() as i32;
+                    (-max_z..=max_z)
+                        .map(move |iz| {
+                            let pos = Vec3::new(
+                                center.x + ix as f32 * step,
+                                center.y + iy as f32 * step,
+                                center.z + iz as f32 * step,
+                            );
+                            (pos, Voxel::random_sides())
+                        })
+                        .collect::<Vec<_>>()
+                })
             })
-        })
-        .collect();
+            .collect();
 
-    // 2. Single-threaded insert (keeps `SparseVoxelOctree` API unchanged)
-    for (pos, voxel) in voxels {
-        octree.insert(pos, voxel);
-    }
+        // 2. Single-threaded insert (keeps `SparseVoxelOctree` API unchanged)
+        for (pos, voxel) in voxels {
+            octree.insert(pos, voxel);
+        }
+        
+        
+    }).expect("TODO: panic message");
+    
+    
 }
 
 fn generate_voxel_sphere(octree: &mut SparseVoxelOctree, planet_radius: i32) {

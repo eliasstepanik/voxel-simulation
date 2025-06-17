@@ -33,7 +33,7 @@ impl Plugin for EnvironmentPlugin {
         app.add_plugins(AppComputePlugin);
         app.add_plugins(AppComputeWorkerPlugin::<GpuMeshingWorker>::default());
 
-        let view_distance_chunks = 100;
+        let view_distance_chunks = 20;
         app.insert_resource(ChunkCullingCfg {
             view_distance_chunks,
         });
