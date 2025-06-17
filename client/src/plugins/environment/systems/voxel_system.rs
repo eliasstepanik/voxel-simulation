@@ -1,5 +1,6 @@
 use crate::plugins::big_space::big_space_plugin::RootGrid;
 use crate::plugins::environment::systems::voxels::structure::*;
+use crate::plugins::environment::systems::voxels::disk_backed_octree::DiskBackedOctree;
 use rayon::prelude::*;
 use std::path::Path;
 
@@ -14,43 +15,21 @@ pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
     let octree_base_size = 64.0 * unit_size;
     let octree_depth = 10;
 
-    let path = Path::new("octree.bin");
+    let octree = DiskBackedOctree::new("octree.bin", octree_depth, octree_base_size);
 
-    let mut octree = if path.exists() {
-        match SparseVoxelOctree::load_from_file(path) {
-            Ok(tree) => tree,
-            Err(err) => {
-                error!("failed to load octree: {err}");
-                SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false)
-            }
-        }
-    } else {
-        let mut tree = SparseVoxelOctree::new(octree_depth, octree_base_size, false, false, false);
-        // How many random spheres?
-        /*const NUM_SPHERES: usize = 5;
-        let mut rng = threald_rng();
-
-        for _ in 0..NUM_SPHERES {
-            let center = Vec3::new(
-                rng.gen_range(-1000.0..1000.0),
-                rng.gen_range(-1000.0..1000.0),
-                rng.gen_range(-1000.0..1000.0),
-            );
-
-            let radius = rng.gen_range(20..=150);     // voxels
-
-            generate_voxel_sphere_parallel(&mut tree, center, radius);
-        }*/
-
-        generate_voxel_sphere(&mut tree, 200);
-        tree
-    };
+    if !Path::new("octree.bin").exists() {
+        let _ = octree.with_octree(|tree| {
+            generate_voxel_sphere(tree, 200);
+        });
+    }
 
     // Attach octree to the scene graph
     commands.entity(root.0).with_children(|parent| {
         parent.spawn((Transform::default(), octree));
     });
 }
+
+
 
 pub fn generate_voxel_sphere_parallel(octree: &mut SparseVoxelOctree, center: Vec3, radius: i32) {
     let step = octree.get_spacing_at_depth(octree.max_depth);

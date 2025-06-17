@@ -1,6 +1,7 @@
 pub mod debug;
 pub mod helper;
 pub mod octree;
+pub mod disk_backed_octree;
 pub mod structure;
 
 mod chunk;
