@@ -1,21 +1,24 @@
+use crate::plugins::environment::systems::voxels::atlas::VoxelTextureAtlas;
+use crate::plugins::environment::systems::voxels::chunk_io::{
+    save_dirty_chunks_system, unload_far_chunks,
+};
 use crate::plugins::environment::systems::voxels::debug::{draw_grid, visualize_octree_system};
 use crate::plugins::environment::systems::voxels::lod::update_chunk_lods;
 use crate::plugins::environment::systems::voxels::meshing_gpu::{
     GpuMeshingWorker, queue_gpu_meshing,
 };
-use bevy_app_compute::prelude::{AppComputePlugin, AppComputeWorkerPlugin};
 use crate::plugins::environment::systems::voxels::queue_systems;
 use crate::plugins::environment::systems::voxels::queue_systems::{
     enqueue_visible_chunks, process_chunk_queue,
 };
 use crate::plugins::environment::systems::voxels::render_chunks::rebuild_dirty_chunks;
-use crate::plugins::environment::systems::voxels::atlas::{VoxelTextureAtlas};
 use crate::plugins::environment::systems::voxels::structure::{
     ChunkBudget, ChunkCullingCfg, ChunkQueue, MeshBufferPool, PrevCameraChunk, SparseVoxelOctree,
     SpawnedChunks,
 };
 use bevy::app::{App, Plugin, PreStartup, PreUpdate, Startup};
 use bevy::prelude::*;
+use bevy_app_compute::prelude::{AppComputePlugin, AppComputeWorkerPlugin};
 
 pub struct EnvironmentPlugin;
 impl Plugin for EnvironmentPlugin {
@@ -39,7 +42,7 @@ impl Plugin for EnvironmentPlugin {
         });
         app.insert_resource(ChunkBudget { per_frame: 20 });
         app.init_resource::<PrevCameraChunk>();
-       /* app.add_systems(Update, log_mesh_count);*/
+        /* app.add_systems(Update, log_mesh_count);*/
         app
             // ------------------------------------------------------------------------
             // resources
@@ -57,8 +60,10 @@ impl Plugin for EnvironmentPlugin {
                     enqueue_visible_chunks,
                     process_chunk_queue.after(enqueue_visible_chunks),
                     update_chunk_lods.after(process_chunk_queue),
+                    unload_far_chunks.after(update_chunk_lods),
                     rebuild_dirty_chunks.after(process_chunk_queue), // 4.  (re)mesh dirty chunks
                     queue_gpu_meshing.after(rebuild_dirty_chunks),
+                    save_dirty_chunks_system.after(rebuild_dirty_chunks),
                     /* ---------- optional debug drawing ------- */
                     visualize_octree_system
                         .run_if(should_visualize_octree)
