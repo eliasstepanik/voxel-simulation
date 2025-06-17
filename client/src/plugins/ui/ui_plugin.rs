@@ -1,3 +1,4 @@
+use crate::plugins::ui::options::OptionsMenuPlugin;
 use crate::plugins::ui::systems::ui_system::*;
 use bevy::app::{App, FixedUpdate, Plugin, PreUpdate, Startup};
 
@@ -6,5 +7,6 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup);
         app.add_systems(FixedUpdate, update);
+        app.add_plugins(OptionsMenuPlugin);
     }
 }

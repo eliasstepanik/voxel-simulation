@@ -1,0 +1,8 @@
+{
+  "items": [
+    { "label": "Toggle Wireframe", "action": "toggle_wireframe" },
+    { "label": "Toggle Grid", "action": "toggle_grid" },
+    { "label": "Toggle Edit Mode", "action": "toggle_edit_mode" },
+    { "label": "Exit", "action": "exit" }
+  ]
+}

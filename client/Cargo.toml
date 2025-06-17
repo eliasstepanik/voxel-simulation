@@ -12,6 +12,7 @@ build = "build.rs"
 bevy = { version = "0.16.1", features = ["jpeg", "trace_tracy", "trace_tracy_memory", "serialize"] }
 rand = "0.8.5"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 toml = "0.8"
 big_space = { git = "https://github.com/aevyrie/big_space.git", rev = "5345af11d4ce138bacf5a9a3ab53d1c3b3b103c7" }
 noise = "0.9.0"
