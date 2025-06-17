@@ -1,6 +1,9 @@
 use crate::plugins::environment::systems::voxels::structure::SparseVoxelOctree;
 use crate::plugins::input::systems::voxels::VoxelEditMode;
 use bevy::prelude::*;
+use bevy::ui::{
+    BackgroundColor, ButtonBundle, NodeBundle, Style, TextBundle, TextStyle, UiRect,
+};
 use serde::Deserialize;
 
 #[derive(Deserialize, Resource)]
@@ -49,7 +52,7 @@ fn setup_menu(
                 flex_direction: FlexDirection::Column,
                 ..default()
             },
-            background_color: Color::rgba(0.1, 0.1, 0.1, 0.5).into(),
+            background_color: BackgroundColor(Color::srgb(0.1, 0.1, 0.1).with_alpha(0.5)),
             ..default()
         })
         .with_children(|parent| {
@@ -62,7 +65,7 @@ fn setup_menu(
                                 padding: UiRect::all(Val::Px(4.0)),
                                 ..default()
                             },
-                            background_color: Color::GRAY.into(),
+                            background_color: BackgroundColor(Color::srgb(0.5, 0.5, 0.5)),
                             ..default()
                         },
                         MenuButton {
@@ -109,7 +112,7 @@ fn handle_buttons(
                     };
                 }
                 "exit" => {
-                    exit.send(AppExit);
+                    exit.send(AppExit::Success);
                 }
                 _ => {}
             }
