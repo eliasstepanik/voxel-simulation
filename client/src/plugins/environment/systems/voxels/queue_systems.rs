@@ -1,4 +1,3 @@
-use crate::plugins::environment::systems::voxels::helper::world_to_chunk;
 use crate::plugins::environment::systems::voxels::structure::*;
 use bevy::prelude::*;
 use rayon::prelude::*;
@@ -20,7 +19,7 @@ pub fn enqueue_visible_chunks(
         return;
     };
     let cam_pos = cam_tf.translation();
-    let centre = world_to_chunk(tree, cam_pos);
+    let centre = tree.world_to_chunk(cam_pos);
 
     if prev_cam.0 == Some(centre) {
         return;

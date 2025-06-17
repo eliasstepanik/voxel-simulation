@@ -1,4 +1,3 @@
-use crate::plugins::environment::systems::voxels::helper::chunk_key_from_world;
 use crate::plugins::environment::systems::voxels::structure::{
     AABB, CHUNK_SIZE, ChunkKey, DirtyVoxel, NEIGHBOR_OFFSETS, OctreeNode, Ray, SparseVoxelOctree,
     Voxel,
@@ -50,7 +49,7 @@ impl SparseVoxelOctree {
         let dirty_voxel = DirtyVoxel { position: aligned };
 
         self.dirty.push(dirty_voxel);
-        let key = chunk_key_from_world(self, position);
+        let key = self.world_to_chunk(position);
         self.dirty_chunks.insert(key);
         self.mark_neighbor_chunks_dirty(position);
         self.occupied_chunks.insert(key);
@@ -99,7 +98,7 @@ impl SparseVoxelOctree {
         self.dirty.push(DirtyVoxel { position: aligned });
 
         // mark the chunk
-        let key = chunk_key_from_world(self, position);
+        let key = self.world_to_chunk(position);
         self.dirty_chunks.insert(key);
         self.mark_neighbor_chunks_dirty(position);
 
@@ -122,7 +121,7 @@ impl SparseVoxelOctree {
     }
 
     fn mark_neighbor_chunks_dirty(&mut self, position: Vec3) {
-        let key = chunk_key_from_world(self, position);
+        let key = self.world_to_chunk(position);
         let step = self.get_spacing_at_depth(self.max_depth);
         let half = self.size * 0.5;
 
@@ -317,7 +316,11 @@ impl SparseVoxelOctree {
 
     /// Helper: Collect all voxels from a given octree node recursively.
     /// The coordinate system here assumes the node covers [–old_size/2, +old_size/2] in each axis.
-    fn collect_voxels_from_node(node: &OctreeNode, old_size: f32, center: Vec3) -> Vec<(Vec3, Voxel, u32)> {
+    fn collect_voxels_from_node(
+        node: &OctreeNode,
+        old_size: f32,
+        center: Vec3,
+    ) -> Vec<(Vec3, Voxel, u32)> {
         let mut voxels = Vec::new();
         Self::collect_voxels_recursive(
             node,
@@ -565,7 +568,7 @@ impl SparseVoxelOctree {
 
         let voxels = Self::collect_voxels_from_node(&self.root, self.size, self.center);
         for (pos, _voxel, _depth) in voxels {
-            let key = chunk_key_from_world(self, pos);
+            let key = self.world_to_chunk(pos);
             self.occupied_chunks.insert(key);
         }
     }
