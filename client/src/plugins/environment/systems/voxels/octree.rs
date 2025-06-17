@@ -589,4 +589,83 @@ impl SparseVoxelOctree {
             self.occupied_chunks.insert(key);
         }
     }
+
+    /// Collect all voxels contained within a chunk.
+    pub fn voxels_in_chunk(&self, key: ChunkKey) -> Vec<(Vec3, Voxel)> {
+        let step = self.get_spacing_at_depth(self.max_depth);
+        let chunk_size = CHUNK_SIZE as f32 * step;
+        let center = self.chunk_center_world(key);
+        let half = Vec3::splat(chunk_size / 2.0);
+        let min = center - half;
+        let max = center + half;
+
+        Self::collect_voxels_from_node(&self.root, self.size, self.center)
+            .into_iter()
+            .filter_map(|(pos, voxel, _)| {
+                if pos.x >= min.x
+                    && pos.x < max.x
+                    && pos.y >= min.y
+                    && pos.y < max.y
+                    && pos.z >= min.z
+                    && pos.z < max.z
+                {
+                    Some((pos, voxel))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Save a single chunk to disk inside the specified directory.
+    pub fn save_chunk<P: AsRef<Path>>(&self, key: ChunkKey, dir: P) -> io::Result<()> {
+        let voxels = self.voxels_in_chunk(key);
+        if voxels.is_empty() {
+            return Ok(());
+        }
+        std::fs::create_dir_all(&dir)?;
+        let path = dir
+            .as_ref()
+            .join(format!("chunk_{}_{}_{}.bin", key.0, key.1, key.2));
+        let data =
+            bincode::serialize(&voxels).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        std::fs::write(path, data)
+    }
+
+    /// Load a single chunk from disk and insert its voxels.
+    pub fn load_chunk<P: AsRef<Path>>(&mut self, key: ChunkKey, dir: P) -> io::Result<()> {
+        let path = dir
+            .as_ref()
+            .join(format!("chunk_{}_{}_{}.bin", key.0, key.1, key.2));
+        if !path.exists() {
+            return Ok(());
+        }
+        let bytes = std::fs::read(path)?;
+        let voxels: Vec<(Vec3, Voxel)> =
+            bincode::deserialize(&bytes).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        for (pos, voxel) in voxels {
+            self.insert(pos, voxel);
+        }
+        self.clear_dirty_flags();
+        Ok(())
+    }
+
+    /// Remove all voxels from the specified chunk.
+    pub fn unload_chunk(&mut self, key: ChunkKey) {
+        let voxels = self.voxels_in_chunk(key);
+        for (pos, _) in voxels {
+            self.remove(pos);
+        }
+        self.clear_dirty_flags();
+    }
+
+    /// Save all currently dirty chunks to disk and clear the dirty set.
+    pub fn save_dirty_chunks<P: AsRef<Path>>(&mut self, dir: P) -> io::Result<()> {
+        let keys: Vec<_> = self.dirty_chunks.iter().copied().collect();
+        for key in keys {
+            let _ = self.save_chunk(key, &dir);
+        }
+        self.clear_dirty_flags();
+        Ok(())
+    }
 }
