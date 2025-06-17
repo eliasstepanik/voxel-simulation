@@ -1,8 +1,8 @@
-use bevy::prelude::*;
 use crate::plugins::environment::systems::voxels::structure::*;
+use bevy::prelude::*;
 
 impl SparseVoxelOctree {
-    pub fn ray_intersects_aabb(&self,ray: &Ray, aabb: &AABB) -> bool {
+    pub fn ray_intersects_aabb(&self, ray: &Ray, aabb: &AABB) -> bool {
         let inv_dir = 1.0 / ray.direction;
         let t1 = (aabb.min - ray.origin) * inv_dir;
         let t2 = (aabb.max - ray.origin) * inv_dir;
@@ -16,13 +16,11 @@ impl SparseVoxelOctree {
         t_enter <= t_exit && t_exit >= 0.0
     }
 
-
     /// Returns the size of one voxel at the given depth.
     pub fn get_spacing_at_depth(&self, depth: u32) -> f32 {
         let effective = depth.min(self.max_depth);
         self.size / (2_u32.pow(effective)) as f32
     }
-
 
     /// Center-based: [-size/2..+size/2]. Shift +half_size => [0..size], floor, shift back.
     pub fn normalize_to_voxel_at_depth(&self, position: Vec3, depth: u32) -> Vec3 {
@@ -43,6 +41,28 @@ impl SparseVoxelOctree {
         voxel_center * self.size - Vec3::splat(half_size) + self.center
     }
 
+    /// Convert a world position to the key of the chunk containing it.
+    pub fn world_to_chunk(&self, pos: Vec3) -> ChunkKey {
+        let step = self.get_spacing_at_depth(self.max_depth);
+        let half = self.size * 0.5;
+        let scale = CHUNK_SIZE as f32 * step; // metres per chunk
+        ChunkKey(
+            ((pos.x - self.center.x + half) / scale).floor() as i32,
+            ((pos.y - self.center.y + half) / scale).floor() as i32,
+            ((pos.z - self.center.z + half) / scale).floor() as i32,
+        )
+    }
+
+    /// Calculate the world-space center for a given chunk.
+    pub fn chunk_center_world(&self, key: ChunkKey) -> Vec3 {
+        let half = self.size * 0.5;
+        let step = self.get_spacing_at_depth(self.max_depth);
+        Vec3::new(
+            self.center.x - half + (key.0 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
+            self.center.y - half + (key.1 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
+            self.center.z - half + (key.2 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
+        )
+    }
 
     pub fn compute_child_bounds(&self, bounds: &AABB, index: usize) -> AABB {
         let min = bounds.min;
@@ -126,8 +146,6 @@ impl SparseVoxelOctree {
         (local_pos - Vec3::splat(0.5)) * self.size + self.center
     }
 
-
-
     /// Helper function to recursively traverse the octree to a specific depth.
     pub(crate) fn get_node_at_depth(
         node: &OctreeNode,
@@ -186,9 +204,6 @@ impl SparseVoxelOctree {
         // If no voxel found in this node or its children
         false
     }
-
-
-
 }
 
 /// Returns the (face_normal, local_offset) for the given neighbor direction.
@@ -235,53 +250,21 @@ pub fn face_orientation(dx: f32, dy: f32, dz: f32, voxel_size_f: f32) -> (Vec3, 
         }
         // If the direction is not one of the 6 axis directions, you might skip or handle differently
         _ => {
-            // For safety, we can panic or return a default. 
+            // For safety, we can panic or return a default.
             // But typically you won't call face_orientation with an invalid direction
             panic!("Invalid face direction: ({}, {}, {})", dx, dy, dz);
         }
     }
 }
 
-pub(crate) fn chunk_key_from_world(tree: &SparseVoxelOctree, pos: Vec3) -> ChunkKey {
-    let half = tree.size * 0.5;
-    let step = tree.get_spacing_at_depth(tree.max_depth);
-    let scale = CHUNK_SIZE as f32 * step; // metres per chunk
-    ChunkKey(
-        ((pos.x - tree.center.x + half) / scale).floor() as i32,
-        ((pos.y - tree.center.y + half) / scale).floor() as i32,
-        ((pos.z - tree.center.z + half) / scale).floor() as i32,
-    )
-}
-
-pub fn world_to_chunk(tree: &SparseVoxelOctree, p: Vec3) -> ChunkKey {
-    let step = tree.get_spacing_at_depth(tree.max_depth);
-    let half = tree.size * 0.5;
-    let scale = CHUNK_SIZE as f32 * step;
-    ChunkKey(
-        ((p.x - tree.center.x + half) / scale).floor() as i32,
-        ((p.y - tree.center.y + half) / scale).floor() as i32,
-        ((p.z - tree.center.z + half) / scale).floor() as i32,
-    )
-}
-
-pub fn chunk_center_world(tree: &SparseVoxelOctree, key: ChunkKey) -> Vec3 {
-    let half = tree.size * 0.5;
-    let step = tree.get_spacing_at_depth(tree.max_depth);
-    Vec3::new(
-        tree.center.x - half + (key.0 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
-        tree.center.y - half + (key.1 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
-        tree.center.z - half + (key.2 as f32 + 0.5) * CHUNK_SIZE as f32 * step,
-    )
-}
-
 impl AABB {
     pub fn intersects_aabb(&self, other: &AABB) -> bool {
-        self.min.x <= other.max.x &&
-            self.max.x >= other.min.x &&
-            self.min.y <= other.max.y &&
-            self.max.y >= other.min.y &&
-            self.min.z <= other.max.z &&
-            self.max.z >= other.min.z
+        self.min.x <= other.max.x
+            && self.max.x >= other.min.x
+            && self.min.y <= other.max.y
+            && self.max.y >= other.min.y
+            && self.min.z <= other.max.z
+            && self.max.z >= other.min.z
     }
 
     pub fn center(&self) -> Vec3 {
@@ -316,9 +299,12 @@ impl SparseVoxelOctree {
         if node.is_leaf {
             if let Some(voxel) = &node.voxel {
                 let center = node_bounds.center();
-                if center.x >= min.x && center.x <= max.x &&
-                    center.y >= min.y && center.y <= max.y &&
-                    center.z >= min.z && center.z <= max.z
+                if center.x >= min.x
+                    && center.x <= max.x
+                    && center.y >= min.y
+                    && center.y <= max.y
+                    && center.z >= min.z
+                    && center.z <= max.z
                 {
                     out.push((center, *voxel));
                 }
