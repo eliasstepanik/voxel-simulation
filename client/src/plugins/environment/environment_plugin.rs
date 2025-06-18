@@ -1,4 +1,3 @@
-use std::path::Path;
 use crate::plugins::environment::systems::voxels::debug::{draw_grid, visualize_octree_system};
 use crate::plugins::environment::systems::voxels::lod::update_chunk_lods;
 use crate::plugins::environment::systems::voxels::meshing_gpu::{
@@ -11,6 +10,7 @@ use crate::plugins::environment::systems::voxels::queue_systems::{
 };
 use crate::plugins::environment::systems::voxels::render_chunks::rebuild_dirty_chunks;
 use crate::plugins::environment::systems::voxels::atlas::{VoxelTextureAtlas};
+use crate::plugins::environment::systems::voxel_system::attach_octree_from_task;
 use crate::plugins::environment::systems::voxels::structure::{
     ChunkBudget, ChunkCullingCfg, ChunkQueue, MeshBufferPool, PrevCameraChunk, SparseVoxelOctree,
     SpawnedChunks,
@@ -54,6 +54,7 @@ impl Plugin for EnvironmentPlugin {
             .add_systems(
                 Update,
                 (
+                    attach_octree_from_task,
                     /* ---------- culling & streaming ---------- */
                     enqueue_visible_chunks,
                     process_chunk_queue.after(enqueue_visible_chunks),
