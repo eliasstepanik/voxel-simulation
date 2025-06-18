@@ -1,5 +1,8 @@
 # voxel-simulation
 
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/eliasstepanik/voxel-simulation?utm_source=oss&utm_medium=github&utm_campaign=eliasstepanik%2Fvoxel-simulation&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+
+
 Voxel Simulation is an experimental 3D world built with the
 [Bevy](https://bevyengine.org/) game engine. The project showcases
 streaming voxel terrain, high precision coordinates via the
