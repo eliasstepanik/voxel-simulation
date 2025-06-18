@@ -591,12 +591,11 @@ impl SparseVoxelOctree {
     }
 
     /// Load a Wavefront `.obj` file and insert all triangles as voxels.
-    /// `voxel_size` defines the world-space size of the generated voxels.
+    /// The voxel size is derived from the octree's spacing at `max_depth`.
     pub fn insert_obj_file<P: AsRef<Path>>(
         &mut self,
         path: P,
         voxel: Voxel,
-        voxel_size: f32,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use obj::Obj;
         use voxelize_rs::{Triangle, Vector3, voxelize};
@@ -624,7 +623,8 @@ impl SparseVoxelOctree {
             }
         }
 
-        let size = Vector3::new(voxel_size, voxel_size, voxel_size);
+        let step = self.get_spacing_at_depth(self.max_depth);
+        let size = Vector3::new(step, step, step);
         let voxels = voxelize(&tris, &size);
         for p in voxels {
             self.insert(Vec3::new(p.x, p.y, p.z), voxel);
