@@ -1,6 +1,6 @@
 use crate::plugins::environment::systems::voxels::structure::{
-    ChunkKey, DirtyVoxel, OctreeNode, Ray, SparseVoxelOctree, Voxel, AABB, CHUNK_SIZE,
-    NEIGHBOR_OFFSETS,
+    AABB, CHUNK_SIZE, ChunkKey, DirtyVoxel, NEIGHBOR_OFFSETS, OctreeNode, Ray, SparseVoxelOctree,
+    Voxel,
 };
 use bevy::asset::Assets;
 use bevy::math::{DQuat, DVec3};
@@ -588,5 +588,48 @@ impl SparseVoxelOctree {
             let key = self.world_to_chunk(pos);
             self.occupied_chunks.insert(key);
         }
+    }
+
+    /// Load a Wavefront `.obj` file and insert all triangles as voxels.
+    /// The voxel size is derived from the octree's spacing at `max_depth`.
+    pub fn insert_obj_file<P: AsRef<Path>>(
+        &mut self,
+        path: P,
+        voxel: Voxel,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        use obj::Obj;
+        use voxelize_rs::{Triangle, Vector3, voxelize};
+
+        let obj: Obj<obj::TexturedVertex> = Obj::load(path)?;
+
+        let mut tris = Vec::new();
+        for object in &obj.data.objects {
+            for group in &object.groups {
+                for poly in &group.polys {
+                    if poly.0.len() < 3 {
+                        continue;
+                    }
+                    for i in 1..poly.0.len() - 1 {
+                        let v0 = obj.data.position[poly.0[0].0];
+                        let v1 = obj.data.position[poly.0[i].0];
+                        let v2 = obj.data.position[poly.0[i + 1].0];
+                        tris.push(Triangle::new(
+                            Vector3::new(v0[0], v0[1], v0[2]),
+                            Vector3::new(v1[0], v1[1], v1[2]),
+                            Vector3::new(v2[0], v2[1], v2[2]),
+                        ));
+                    }
+                }
+            }
+        }
+
+        let step = self.get_spacing_at_depth(self.max_depth);
+        let size = Vector3::new(step, step, step);
+        let voxels = voxelize(&tris, &size);
+        for p in voxels {
+            self.insert(Vec3::new(p.x, p.y, p.z), voxel);
+        }
+
+        Ok(())
     }
 }
