@@ -3,13 +3,10 @@ use crate::plugins::environment::systems::voxels::structure::*;
 use bevy::prelude::*;
 use bevy::render::mesh::*;
 use noise::{NoiseFn, Perlin};
-use rand::{thread_rng, Rng};
+use rand::{Rng, thread_rng};
 use rayon::prelude::*;
 use std::path::Path;
 use std::thread;
-
-
-
 
 pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
     let builder = thread::Builder::new()
@@ -70,42 +67,31 @@ pub fn setup(mut commands: Commands, root: Res<RootGrid>) {
     });
 }
 
-
 pub fn generate_voxel_sphere_parallel(octree: &mut SparseVoxelOctree, center: Vec3, radius: i32) {
     let step = octree.get_spacing_at_depth(octree.max_depth);
     let radius_sq = radius * radius;
 
-    // 1. Collect voxel positions in parallel
-    let voxels: Vec<(Vec3, Voxel)> = (-radius..=radius)
-        .into_par_iter()
-        .flat_map_iter(|ix| {
-            let dx2 = ix * ix;
-            (-radius..=radius).flat_map(move |iy| {
-                let dy2 = iy * iy;
-                let r2_xy = dx2 + dy2;
+    // Directly iterate over voxel positions to avoid building a large Vec.
+    for ix in -radius..=radius {
+        let dx2 = ix * ix;
+        for iy in -radius..=radius {
+            let dy2 = iy * iy;
+            let r2_xy = dx2 + dy2;
 
-                if r2_xy > radius_sq {
-                    return Vec::new(); // this (x,y) column is outside
-                }
+            if r2_xy > radius_sq {
+                continue;
+            }
 
-                let max_z = ((radius_sq - r2_xy) as f32).sqrt() as i32;
-                (-max_z..=max_z)
-                    .map(move |iz| {
-                        let pos = Vec3::new(
-                            center.x + ix as f32 * step,
-                            center.y + iy as f32 * step,
-                            center.z + iz as f32 * step,
-                        );
-                        (pos, Voxel::random_sides())
-                    })
-                    .collect::<Vec<_>>()
-            })
-        })
-        .collect();
-
-    // 2. Single-threaded insert (keeps `SparseVoxelOctree` API unchanged)
-    for (pos, voxel) in voxels {
-        octree.insert(pos, voxel);
+            let max_z = ((radius_sq - r2_xy) as f32).sqrt() as i32;
+            for iz in -max_z..=max_z {
+                let pos = Vec3::new(
+                    center.x + ix as f32 * step,
+                    center.y + iy as f32 * step,
+                    center.z + iz as f32 * step,
+                );
+                octree.insert(pos, Voxel::random_sides());
+            }
+        }
     }
 }
 
